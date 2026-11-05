@@ -1,0 +1,137 @@
+## Every tuning value for the board, feet, wheels, camera and haptics.
+## The saved instance is res://tuning/board_tuning.tres — edit it in the Inspector.
+## Units: geometry in real millimetres / grams (converted with world_scale),
+## everything else in world units (1 unit = 10 cm real by default).
+class_name BoardTuning
+extends Resource
+
+@export_group("World")
+## World units per real metre. 10 => the 96 mm board is 0.96 units long,
+## a comfortable size for the physics engine and the camera.
+@export var world_scale: float = 10.0
+## 1.0 = real gravity (9.81 m/s² scaled to world units). Lower = floatier.
+@export var gravity_multiplier: float = 1.0
+## Fixed physics rate. Higher = more stable contacts, more CPU. Keep a multiple of 60.
+@export var physics_ticks_per_second: int = 120
+
+@export_group("Board geometry (real mm)")
+@export var deck_length_mm: float = 96.0
+@export var deck_width_mm: float = 28.0
+## Physical thickness of the collision deck (real decks ~1.5 mm; thicker is more stable).
+@export var deck_thickness_mm: float = 2.0
+## Length of each kick, measured along the kick from the bend to the tip.
+@export var kick_length_mm: float = 17.0
+@export var kick_angle_deg: float = 22.0
+## Distance between the front and rear axle.
+@export var wheelbase_mm: float = 54.0
+## Distance between left and right wheel centres on one axle.
+@export var wheel_track_mm: float = 24.0
+@export var wheel_diameter_mm: float = 7.5
+@export var wheel_width_mm: float = 4.5
+## Height of the underside of the deck above the ground when standing on its wheels.
+@export var deck_clearance_mm: float = 10.0
+
+@export_group("Board mass")
+## A real fingerboard with trucks and wheels is about 12-16 g.
+@export var mass_g: float = 14.0
+## Centre of mass below the deck mid-plane (trucks + wheels pull it down).
+@export var com_drop_mm: float = 4.0
+## Effective "box height" used for the inertia formula (spreads mass vertically).
+@export var inertia_height_mm: float = 12.0
+## Air drag on linear motion (1/s). Fingerboards are light, so a little drag matters.
+@export var linear_damp: float = 0.05
+## Damping of spin (1/s). Higher = board stops rotating sooner in the air.
+@export var angular_damp: float = 0.4
+
+@export_group("Wheels")
+## How fast sideways sliding of a grounded wheel is cancelled (1/s). Keep < ticks/s.
+@export var wheel_lateral_grip: float = 40.0
+## Constant rolling deceleration from bearings/wheels (units/s²).
+@export var rolling_resistance: float = 0.25
+
+@export_group("Feet (fingers on the board)")
+## Shifts the back/front split along the board (mm, + toward the tail).
+@export var foot_split_mm: float = 0.0
+## A finger counts as "on the board" this far past the deck's side edges (mm).
+@export var foot_catch_margin_mm: float = 3.0
+## ...and this far past the nose/tail tips (mm). Generous, because flicking down on the tail
+## moves the finger past the tip on screen while, in "real life", it is still on the kick.
+@export var foot_end_margin_mm: float = 30.0
+## Finger velocity is measured across this many physics ticks (smooths 60 Hz touch input).
+@export var finger_velocity_ticks: int = 6
+## Downward force of a resting finger while the board is on its wheels, in board weights.
+@export var foot_rest_weight: float = 0.25
+## How fast a pressing finger drives its point of the deck down (units/s) per unit of
+## press speed (screen heights/s). Press speed = finger speed on screen toward the end of the
+## board nearest that finger. THE main "pop strength" knob.
+@export var press_speed_gain: float = 2.5
+## Press only works on the outer part of the board, where the kicks rise: it fades in from
+## this distance from the centre (mm) to full strength at the kick bend. Default sits just
+## inside the bolts, so a front foot slides freely until it reaches the front bolts.
+@export var press_zone_start_mm: float = 15.0
+## Finger speeds below this (screen heights/s) don't press — filters jitter.
+@export var press_deadzone: float = 0.3
+## How quickly a foot gets its point of the deck up to speed (s). Smaller = snappier, harder
+## feet. Keep ≥ 2 physics ticks (0.017 s at 120 Hz) for stability.
+@export var press_response_time: float = 0.03
+## Upper limit for one finger's press force, in board weights.
+@export var press_max_weights: float = 20.0
+## How strongly a sliding finger drags the grip tape (1/s, mass-normalised).
+@export var grip_rate: float = 25.0
+## Grip tape friction coefficient: drag force is capped at grip_mu × press force.
+@export var grip_mu: float = 0.35
+
+@export_group("Pop")
+## Extra bounce when the tail strikes the ground (0 = dead tail, 1 = superball).
+@export var tail_restitution: float = 0.8
+## Tail strikes slower than this (units/s) don't bounce or buzz.
+@export var pop_min_speed: float = 2.0
+
+@export_group("Pushing")
+## Push force per unit of (swipe speed − board speed), mass-normalised (1/s).
+@export var push_gain: float = 20.0
+## Max acceleration a push can give (units/s²).
+@export var push_max_accel: float = 40.0
+## A ground touch must land within this distance of the board to push (mm).
+@export var push_reach_mm: float = 250.0
+
+@export_group("Camera")
+## Horizontal distance behind the board (world units; the board is 0.96 long).
+## Closer = bigger board on screen = finer finger control.
+@export var camera_distance: float = 1.2
+@export var camera_height: float = 0.5
+@export var camera_fov_deg: float = 40.0
+## The camera aims this far ahead of the board.
+@export var camera_look_ahead: float = 0.1
+## How quickly the camera catches up with the board (1/s).
+@export var camera_follow: float = 6.0
+## How quickly the camera swings round to the board's heading (1/s).
+@export var camera_turn_follow: float = 3.0
+
+@export_group("Haptics")
+@export var haptics_enabled: bool = true
+@export var haptic_pop_ms: int = 25
+@export var haptic_land_ms: int = 40
+## Landings slower than this (units/s downward) don't buzz.
+@export var haptic_land_min_speed: float = 1.5
+## Impact speed (units/s) that gives a full-strength buzz.
+@export var haptic_full_speed: float = 15.0
+## Airborne time (s) needed before a touchdown counts as a landing.
+@export var landing_min_air_time: float = 0.1
+
+
+# ---- Derived values (computed, not edited) -------------------------------------------
+
+## Converts real millimetres to world units.
+func mm(v: float) -> float:
+	return v * 0.001 * world_scale
+
+func mass_kg() -> float:
+	return mass_g * 0.001
+
+func gravity() -> float:
+	return 9.81 * world_scale * gravity_multiplier
+
+## Weight of the board in world force units; feet forces are expressed in these.
+func board_weight() -> float:
+	return mass_kg() * gravity()

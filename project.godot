@@ -1,0 +1,47 @@
+; Engine configuration file.
+; Godot 4.5+. Android, landscape, multitouch, Jolt physics at a fixed 120 Hz.
+
+config_version=5
+
+[application]
+
+config/name="Fingerboard"
+config/description="Realistic fingerboard game: your two fingers are the skater's feet."
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.5", "Mobile")
+config/icon="res://icon.svg"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+; 4 = sensor landscape: landscape, either way up.
+window/handheld/orientation=4
+window/energy_saving/keep_screen_on=true
+
+[input_devices]
+
+; Mouse acts as a single touch on desktop, for quick testing in the editor.
+pointing/emulate_touch_from_mouse=true
+pointing/emulate_mouse_from_touch=true
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+common/physics_ticks_per_second=120
+common/max_physics_steps_per_frame=8
+common/physics_jitter_fix=0.0
+common/physics_interpolation=true
+; The board is small (wheels ~4 cm in world units): tighten Jolt's contact tolerances.
+jolt_physics_3d/simulation/penetration_slop=0.002
+jolt_physics_3d/simulation/speculative_contact_distance=0.005
+jolt_physics_3d/simulation/allow_sleep=false
+; A snapped tail spins fast; Jolt's default cap (47 rad/s) would clip the pop.
+jolt_physics_3d/limits/max_angular_velocity=300.0
+
+[rendering]
+
+renderer/rendering_method="mobile"
+renderer/rendering_method.mobile="mobile"
+textures/vram_compression/import_etc2_astc=true
+anti_aliasing/quality/msaa_3d=1
