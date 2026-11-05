@@ -83,12 +83,25 @@ Follow these rules in every session. If a request conflicts with them, say so be
   made the board go vertical and flip during the long hang time.
 - Test finger timings are constants at the top of tests/test_ollie.gd (slow, deliberate inputs).
 
+## M4 decisions (smoother, bail friction, realism)
+
+- Smoother tuning: 16-tick finger window, 0.12 s foot response, angular_damp 2.5, gentler camera;
+  pop gain raised to 2.8 / foot_max_speed 2.5 to keep ~28 mm ollies.
+- `DeckFriction`: Coulomb friction (deck_friction_mu, deck_stick_rate) only for contacts on the
+  board's top or sides (contact normal · deck up < 0.34). Underside contacts (tail strike) stay
+  frictionless so ollies are unchanged. Normals are oriented toward the board's centre of mass.
+- `Board.request_reset(xf, lin, ang)` lets tests drop the board in any pose (still deterministic).
+- Visuals: deck in `BoardVisuals` (rounded ply edges, worn grip edge); trucks/hardware/wheels in
+  `TruckVisuals`. New classes need one `godot --headless --editor --quit` before headless tests,
+  or the test hangs on a parse error.
+
 ## Milestones
 
 - **M1 (done)**: project setup, ground, board, chase camera, finger→foot input, ollie via physics,
   pushing, debug overlay, haptics.
 - **M2 (done)**: outdoor street skatepark, realistic board model, heavier board feel.
 - **M3 (done)**: slower inputs, smoother/slower board reactions, floaty feel.
+- **M4 (done)**: smoother still, high friction for upside-down/side landings, more realistic board.
 - Do **not** build kickflips, steering or other tricks until the user asks for the next milestone.
 
 ## Testing

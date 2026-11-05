@@ -23,6 +23,7 @@ var wheels_down := 0
 var ground_y := 0.0
 
 var _reset_requested := false
+var _reset_to := {}          # optional pose/velocity for the next reset (tests use this)
 var _prev_lin := Vector3.ZERO
 var _prev_ang := Vector3.ZERO
 var _kicks_touching := {}   # part name → bool, last tick
@@ -77,8 +78,11 @@ func _box_inertia() -> Vector3:
 	return Vector3(h * h + l * l, w * w + l * l, w * w + h * h) * (m / 12.0)
 
 
-func request_reset() -> void:
+## Put the board back at the spawn on the next physics tick. Tests may pass a different pose and
+## starting velocities (e.g. dropping it upside down) — applied at a tick, so still deterministic.
+func request_reset(xf: Variant = null, lin := Vector3.ZERO, ang := Vector3.ZERO) -> void:
 	_reset_requested = true
+	_reset_to = {"xf": xf if xf != null else spawn_xf, "lin": lin, "ang": ang}
 
 
 func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
@@ -91,6 +95,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	var wheel_contacts: Array[Vector3] = []
 	var seen_wheels := {}
 	var kick_hits := {}
+	var deck_contacts: Array = []   # non-wheel contacts: [offset, normal]
 	for i in state.get_contact_count():
 		var shape := state.get_contact_local_shape(i)
 		var part: String = parts.get(shape, "deck")
@@ -99,7 +104,13 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		if part == "wheel" and not seen_wheels.has(shape):
 			seen_wheels[shape] = true
 			wheel_contacts.append(r)
-		elif part == "tail" or part == "nose":
+		if part != "wheel":
+			# Orient the normal from the surface into the board (works on walls and steps too).
+			var nn := state.get_contact_local_normal(i)
+			if nn.dot(state.center_of_mass - r) < 0.0:
+				nn = -nn
+			deck_contacts.append([r, nn])
+		if part == "tail" or part == "nose":
 			# A kick usually touches at several corner points; accumulate them so the bounce is
 			# applied at their average (one corner alone would twist the board).
 			var n := state.get_contact_local_normal(i)
@@ -118,6 +129,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		FootPhysics.apply(state, f, geo, tuning, wheels_down > 0)
 	PushPhysics.apply(state, input.pushers(), wheels_down, tuning)
 	WheelPhysics.apply(state, wheel_contacts, tuning)
+	DeckFriction.apply(state, deck_contacts, tuning)
 
 	# --- Events. ---
 	for part in ["tail", "nose"]:
@@ -162,9 +174,10 @@ func _track_landing(dt: float) -> void:
 
 func _do_reset(state: PhysicsDirectBodyState3D) -> void:
 	_reset_requested = false
-	state.transform = spawn_xf
-	state.linear_velocity = Vector3.ZERO
-	state.angular_velocity = Vector3.ZERO
+	state.transform = _reset_to.get("xf", spawn_xf)
+	state.linear_velocity = _reset_to.get("lin", Vector3.ZERO)
+	state.angular_velocity = _reset_to.get("ang", Vector3.ZERO)
+	_reset_to = {}
 	_prev_lin = Vector3.ZERO
 	_prev_ang = Vector3.ZERO
 	ground_y = spawn_xf.origin.y - geo.rest_height - 0.002

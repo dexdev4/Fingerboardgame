@@ -7,6 +7,9 @@ finger forces acting on a physics board.
 **Milestone 1:** board, ground, chase camera, two-finger feet, ollie, pushing, debug overlay, haptics.
 **Milestone 2:** outdoor street skatepark, realistic board model, heavier and more realistic board feel.
 **Milestone 3:** slow, smooth, floaty controls: deliberate finger movements, lazy rotations, long hang time.
+**Milestone 4:** even smoother reactions; a board that lands upside down or on its side grips the
+ground and stops; more realistic board (rounded ply edges, worn grip, riser pads, kingpin and
+bushings, washers and axle nuts, lipped wheels with bearings).
 
 ## The park
 
@@ -101,7 +104,7 @@ apply live if you edit the resource while the game runs (Remote scene tree).
 ## Tests
 
 Headless physics checks that simulate real touch input: an ollie with and without the front slide,
-three pushes, a determinism repeat, and an ollie down the stairs at speed. Each scenario also
+three pushes, a determinism repeat, an ollie down the stairs at speed, and an upside-down landing. Each scenario also
 prints "feel" numbers (sustained spin, bounces and settle time after landing, how much speed is
 kept, yaw drift), which is how "heavier" was measured:
 
@@ -122,7 +125,9 @@ scripts/
   board.gd                RigidBody3D: reads contacts, applies forces, pop/landing events
   board_geometry.gd       board dimensions (mm → world units)
   board_builder.gd        collision shapes built from the geometry
-  board_visuals.gd        realistic deck, bolts, trucks and wheels
+  board_visuals.gd        realistic deck (concave, rounded ply edges, worn grip, graphic)
+  truck_visuals.gd        trucks, hardware and wheels
+  deck_friction.gd        grip/edge friction when the board lands upside down or on its side
   mesh_util.gd            mesh helpers (lathe, prisms, materials)
   finger.gd               one touch: role, screen/board position and velocity
   finger_input.gd         touches → feet/push fingers, measured in board space each tick

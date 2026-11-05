@@ -20,6 +20,7 @@ var results := {}
 ## Stairs scenario: the ollie starts when the board's centre passes this z (deterministic,
 ## it depends only on the simulated position).
 var stairs_trigger_z := INF
+var upside_start := Vector3.ZERO
 ## Roll-in speed for the stairs scenario (units/s; 10 units/s = 1 m/s real).
 const STAIRS_SPEED := 5.0
 ## Finger timing (physics ticks at 120/s). The controls are tuned for slow, deliberate fingers:
@@ -55,6 +56,7 @@ func _start_scenario() -> void:
 		2: _plan_push()
 		3: _plan_ollie(true)   # repeat of 0 — must match exactly
 		4: _plan_stairs()
+		5: _plan_upside_down()
 		_:
 			_finish()
 
@@ -143,6 +145,17 @@ func _ollie_now(at: int, slide: bool) -> void:
 		_touch(1, Vector2.ZERO, false)])
 
 
+## Drop the board upside down just above the platform, moving forward and spinning — like a
+## bailed trick. It should grab the ground and stop instead of sliding around.
+func _plan_upside_down() -> void:
+	schedule.append([SETTLE, func():
+		var xf := board.spawn_xf
+		xf.basis = xf.basis * Basis(Vector3.BACK, PI)           # rolled over onto the grip
+		xf.origin += Vector3.UP * 0.12
+		board.request_reset(xf, Vector3(0.4, 0, -3.0), Vector3(0, 6.0, 0))
+		upside_start = xf.origin])
+
+
 ## Roll toward the stair set at STAIRS_SPEED and ollie just before the edge.
 func _plan_stairs() -> void:
 	schedule.append([SETTLE, func():
@@ -168,7 +181,7 @@ func _plan_push() -> void:
 
 func _report() -> void:
 	var names := ["ollie + front slide", "ollie, no front slide", "push", "ollie + slide (repeat)",
-			"ollie down the stairs"]
+			"ollie down the stairs", "upside-down landing"]
 	var max_h := 0.0
 	var max_pitch := 0.0
 	var max_speed := 0.0
@@ -201,6 +214,16 @@ func _report() -> void:
 			_expect(max_speed > 60.0, "three swipes should reach stair-clearing speed (>60 cm/s)")
 		3:
 			_expect(str(results[0]) == str(results[3]), "same input must give the same result")
+		5:
+			var slide := Vector2(board.global_position.x - upside_start.x, board.global_position.z - upside_start.z).length()
+			var stop_tick := -1
+			for i in range(log_rows.size() - 1, SETTLE, -1):
+				if log_rows[i][3] > 1.0:     # last tick still moving faster than 1 cm/s
+					stop_tick = log_rows[i][0] - SETTLE
+					break
+			print("  slid %.2f units (%.0f mm real), stopped after %d ticks, yaw turned %.0f°"
+					% [slide, slide * 100.0, stop_tick, board.angles_deg().z])
+			_expect(slide < 0.6 and stop_tick < 60, "upside-down board grabs the ground (<6 cm slide, stops <0.5 s)")
 		4:
 			var p := board.global_position
 			print("  end position z %.2f, ground %.2f, roll %.1f°" % [p.z, board.ground_y, board.angles_deg().y])
