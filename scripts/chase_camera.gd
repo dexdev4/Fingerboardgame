@@ -5,6 +5,10 @@
 ## Smoothing uses exponential approach: x += (target − x)·(1 − e^(−k·dt)).
 ## Unlike a plain lerp with a constant factor, this behaves the same at any tick rate;
 ## k (1/s) is roughly "how many times per second it closes the gap".
+## On its own that lags behind a moving board by v/k (≈1.2 units at 7 units/s), which shrinks
+## the board on screen and slides it out from under your fingers. So the camera also moves
+## with the board's horizontal velocity each tick (feed-forward); the smoothing then only
+## handles changes — at a steady speed the board sits in the same spot on screen.
 class_name ChaseCamera
 extends Camera3D
 
@@ -37,7 +41,9 @@ func _physics_process(dt: float) -> void:
 	_heading = _heading.lerp(_board_heading(_heading), turn).normalized()
 	var target := _target_xf(board.global_position)
 	var follow := 1.0 - exp(-tuning.camera_follow * dt)
-	global_position = global_position.lerp(target.origin, follow)
+	var v := (board as RigidBody3D).linear_velocity if board is RigidBody3D else Vector3.ZERO
+	v.y = 0.0   # vertical motion (pops, drops) stays smoothed so the view doesn't jolt
+	global_position = (global_position + v * dt).lerp(target.origin, follow)
 	look_at(board.global_position + _heading * tuning.camera_look_ahead, Vector3.UP)
 
 

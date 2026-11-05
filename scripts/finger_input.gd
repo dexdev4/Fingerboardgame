@@ -92,8 +92,15 @@ func _assign_role(f: Finger, board_xf: Transform3D, space: PhysicsDirectSpaceSta
 		var want := Finger.Role.BACK_FOOT if local_z > tuning.mm(tuning.foot_split_mm) else Finger.Role.FRONT_FOOT
 		f.role = Finger.Role.IGNORED if _role_taken(want) else want
 		return
-	var ground_hit = ScreenMath.ray_plane(r, Vector3.ZERO, Vector3.UP)
+	# Anything else the ray hits is ground (floor, steps, ledges...). If it hits nothing, use
+	# the level the board is standing on.
+	var ground_hit = null
+	if not hit.is_empty() and hit.collider != board:
+		ground_hit = hit.position
+	else:
+		ground_hit = ScreenMath.ray_plane(r, Vector3(0.0, board_xf.origin.y - geo.rest_height, 0.0), Vector3.UP)
 	if ground_hit != null:
+		f.ground_y = ground_hit.y
 		var flat: Vector3 = ground_hit - board_xf.origin
 		flat.y = 0.0
 		if flat.length() <= tuning.mm(tuning.push_reach_mm):
@@ -147,8 +154,9 @@ func _update_foot(f: Finger, board_xf: Transform3D, size: Vector2, dt: float) ->
 
 ## Measure a push finger: its velocity across the ground plane (units/s).
 func _update_pusher(f: Finger, size: Vector2, dt: float) -> void:
-	var a = ScreenMath.ray_plane(ScreenMath.ray(camera, size, f.window_start()), Vector3.ZERO, Vector3.UP)
-	var b = ScreenMath.ray_plane(ScreenMath.ray(camera, size, f.screen_pos), Vector3.ZERO, Vector3.UP)
+	var ground := Vector3(0.0, f.ground_y, 0.0)
+	var a = ScreenMath.ray_plane(ScreenMath.ray(camera, size, f.window_start()), ground, Vector3.UP)
+	var b = ScreenMath.ray_plane(ScreenMath.ray(camera, size, f.screen_pos), ground, Vector3.UP)
 	var wt := f.window_time(dt)
 	f.ground_vel = (b - a) / wt if a != null and b != null and wt > 0.0 else Vector3.ZERO
 

@@ -3,7 +3,7 @@
 ## The camera follows the board, so a push finger's measured ground velocity is relative to
 ## the board. A real pushing foot only drives the board while it moves backward faster than
 ## the board moves forward (otherwise it just drags along the ground). So:
-##     s      = backward swipe speed (units/s)
+##     s      = backward swipe speed (units/s) × push_speed_scale
 ##     v_fwd  = board speed toward its nose
 ##     F      = m · push_gain · max(s − v_fwd, 0),   capped at m · push_max_accel
 ## Consequence: you can never push faster than you swipe — swipe faster to go faster.
@@ -24,7 +24,7 @@ static func apply(state: PhysicsDirectBodyState3D, pushers: Array[Finger], wheel
 	fwd = fwd.normalized()
 	var v_fwd := state.linear_velocity.dot(fwd)
 	for f in pushers:
-		var s := -f.ground_vel.dot(fwd)
+		var s := -f.ground_vel.dot(fwd) * t.push_speed_scale
 		var force := t.mass_kg() * minf(t.push_gain * maxf(s - v_fwd, 0.0), t.push_max_accel)
 		# Applied through the centre of mass so a push never tips the board.
 		state.apply_force(fwd * force, state.center_of_mass)

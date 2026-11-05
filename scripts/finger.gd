@@ -32,7 +32,9 @@ var press_force := 0.0
 var drag_force := 0.0
 
 # ---- Push finger only ----
-## Finger velocity across the ground plane (units/s), relative to the camera/board.
+## Height of the surface the push finger landed on (the park isn't flat).
+var ground_y := 0.0
+## Finger velocity across that ground plane (units/s), relative to the camera/board.
 var ground_vel := Vector3.ZERO
 
 

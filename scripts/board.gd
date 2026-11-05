@@ -19,6 +19,8 @@ var spawn_xf: Transform3D
 
 # Read by the debug overlay.
 var wheels_down := 0
+## Height of the surface under the wheels the last time any wheel touched it.
+var ground_y := 0.0
 
 var _reset_requested := false
 var _prev_lin := Vector3.ZERO
@@ -32,7 +34,7 @@ func setup(t: BoardTuning, finger_input: FingerInput) -> void:
 	input = finger_input
 	geo = BoardGeometry.new(t)
 	parts = BoardBuilder.build_collision(self, geo)
-	BoardBuilder.build_visuals(self, geo)
+	BoardBuilder.build_visuals(self, geo, t)
 
 	mass = t.mass_kg()
 	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
@@ -51,7 +53,14 @@ func setup(t: BoardTuning, finger_input: FingerInput) -> void:
 	continuous_cd = true         # a snapped tail moves fast; don't let it tunnel the ground
 	contact_monitor = true
 	max_contacts_reported = 16
-	spawn_xf = Transform3D(Basis.IDENTITY, Vector3(0.0, geo.rest_height + 0.002, 0.0))
+	set_spawn(Transform3D.IDENTITY)
+
+
+## Where the board starts and resets to. `ground_xf` = a point on the ground, facing the way
+## the nose should point (−Z); the board is lifted to stand on its wheels there.
+func set_spawn(ground_xf: Transform3D) -> void:
+	spawn_xf = ground_xf.translated(Vector3.UP * (geo.rest_height + 0.002))
+	ground_y = ground_xf.origin.y
 	global_transform = spawn_xf
 
 
@@ -97,6 +106,11 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 			var hit: Array = kick_hits.get(part, [Vector3.ZERO, Vector3.ZERO, 0])
 			kick_hits[part] = [hit[0] + r, hit[1] + (n if n.y >= 0.0 else -n), hit[2] + 1]
 	wheels_down = wheel_contacts.size()
+	if wheels_down > 0:
+		var sum := 0.0
+		for r in wheel_contacts:
+			sum += r.y
+		ground_y = state.transform.origin.y + sum / wheels_down
 
 	# --- Forces. ---
 	input.physics_update(state.transform, state.get_space_state(), dt)
@@ -153,6 +167,7 @@ func _do_reset(state: PhysicsDirectBodyState3D) -> void:
 	state.angular_velocity = Vector3.ZERO
 	_prev_lin = Vector3.ZERO
 	_prev_ang = Vector3.ZERO
+	ground_y = spawn_xf.origin.y - geo.rest_height - 0.002
 	_kicks_touching.clear()
 	_air_time = 0.0
 	input.clear()
@@ -165,9 +180,9 @@ func speed_cm_s() -> float:
 	return linear_velocity.length() / tuning.world_scale * 100.0
 
 
-## Height of the board above its resting height, in real mm.
+## Height of the board above where it would rest on the last surface its wheels touched, mm.
 func height_mm() -> float:
-	return (global_position.y - geo.rest_height) / tuning.world_scale * 1000.0
+	return (global_position.y - geo.rest_height - ground_y) / tuning.world_scale * 1000.0
 
 
 ## [pitch (nose up +), roll (right side down +), yaw] in degrees.
