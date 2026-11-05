@@ -73,11 +73,22 @@ Follow these rules in every session. If a request conflicts with them, say so be
 - Heavy-feel defaults were chosen with the test's feel metrics (sustained spin, settle ticks,
   bounces, coast, yaw drift), comparing against the M1 values.
 
+## M3 decisions (slow, smooth, floaty controls — the user's chosen feel)
+
+- Feel is driven by tuning: gravity_multiplier 0.3 (long hang time), 12-tick finger velocity
+  window, slow foot response (0.09 s), lower force cap, more air spin damping, lazier camera.
+- `foot_max_speed` caps both the press target and the grip-drag slip speed, so fast flicks give
+  (almost) nothing extra — slow, deliberate fingers get the full effect.
+- Lower gravity must come with lower pop speed/rotation (gain 2.4, restitution 0.6); higher gains
+  made the board go vertical and flip during the long hang time.
+- Test finger timings are constants at the top of tests/test_ollie.gd (slow, deliberate inputs).
+
 ## Milestones
 
 - **M1 (done)**: project setup, ground, board, chase camera, finger→foot input, ollie via physics,
   pushing, debug overlay, haptics.
 - **M2 (done)**: outdoor street skatepark, realistic board model, heavier board feel.
+- **M3 (done)**: slower inputs, smoother/slower board reactions, floaty feel.
 - Do **not** build kickflips, steering or other tricks until the user asks for the next milestone.
 
 ## Testing

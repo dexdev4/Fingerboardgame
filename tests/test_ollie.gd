@@ -21,7 +21,12 @@ var results := {}
 ## it depends only on the simulated position).
 var stairs_trigger_z := INF
 ## Roll-in speed for the stairs scenario (units/s; 10 units/s = 1 m/s real).
-const STAIRS_SPEED := 7.0
+const STAIRS_SPEED := 5.0
+## Finger timing (physics ticks at 120/s). The controls are tuned for slow, deliberate fingers:
+const FLICK_TICKS := 14        # back foot: 12% of the screen height in ~0.12 s
+const SLIDE_START := 14        # front foot starts sliding this long after the flick starts
+const SLIDE_TICKS := 26        # front foot: 22% of the screen height in ~0.22 s
+const SWIPE_TICKS := 24        # each push swipe: 30% of the screen height in 0.2 s
 ## How far before the platform edge (units) the board's centre is when the flick starts.
 const STAIRS_LEAD := 1.2
 
@@ -79,7 +84,7 @@ func _physics_process(_dt: float) -> bool:
 		print("t%d h%.1f p%.1f w%d k%s vy%.1f wx%.1f |w|%.1f%s" % [tick, board.height_mm(), a.x, board.wheels_down, str(board._kicks_touching.values()), board.linear_velocity.y, board.angular_velocity.x, board.angular_velocity.length(), fs])
 	log_rows.append([tick, board.height_mm(), a.x, board.speed_cm_s(), board.wheels_down, board.angular_velocity.length()])
 	tick += 1
-	if tick >= SETTLE + (220 if scenario == 4 else 150):
+	if tick >= SETTLE + (300 if scenario == 4 else 240):
 		_report()
 		scenario += 1
 		_start_scenario()
@@ -129,11 +134,11 @@ func _ollie_now(at: int, slide: bool) -> void:
 	_touch(0, tail, true)
 	_touch(1, front, true)
 	# Back foot: quick flick down the screen (12% of screen height in 50 ms).
-	_plan_move(0, at + 2, tail, Vector2(0, h * 0.12), 6)
+	_plan_move(0, at + 2, tail, Vector2(0, h * 0.12), FLICK_TICKS)
 	if slide:
 		# Front foot: drag up toward the nose, starting just after the pop.
-		_plan_move(1, at + 8, front, Vector2(0, -h * 0.22), 14)
-	schedule.append([at + 40, func():
+		_plan_move(1, at + SLIDE_START, front, Vector2(0, -h * 0.22), SLIDE_TICKS)
+	schedule.append([at + SLIDE_START + SLIDE_TICKS + 10, func():
 		_touch(0, Vector2.ZERO, false)
 		_touch(1, Vector2.ZERO, false)])
 
@@ -150,13 +155,13 @@ func _plan_stairs() -> void:
 ## Three backward swipes on the ground beside the board, like three pushes.
 func _plan_push() -> void:
 	for k in 3:
-		var at := SETTLE + k * 24
+		var at := SETTLE + k * (SWIPE_TICKS + 12)
 		schedule.append([at, func():
 			var h := cam.get_viewport().get_visible_rect().size.y
 			var beside := _screen_of_local(Vector3(board.geo.half_width * 3.0, -board.geo.rest_height, 0))
 			_touch(0, beside, true)
-			_plan_move(0, at + 1, beside, Vector2(0, h * 0.3), 12)])
-		schedule.append([at + 14, func(): _touch(0, Vector2.ZERO, false)])
+			_plan_move(0, at + 1, beside, Vector2(0, h * 0.3), SWIPE_TICKS)])
+		schedule.append([at + SWIPE_TICKS + 2, func(): _touch(0, Vector2.ZERO, false)])
 
 
 # ---- Reporting ------------------------------------------------------------------------------

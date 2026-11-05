@@ -6,6 +6,7 @@ finger forces acting on a physics board.
 
 **Milestone 1:** board, ground, chase camera, two-finger feet, ollie, pushing, debug overlay, haptics.
 **Milestone 2:** outdoor street skatepark, realistic board model, heavier and more realistic board feel.
+**Milestone 3:** slow, smooth, floaty controls: deliberate finger movements, lazy rotations, long hang time.
 
 ## The park
 
@@ -38,6 +39,10 @@ scratch and **overwrites edits made in the editor**:
 | Front foot: **drag up toward the nose** after the pop | Catches the rising nose and levels the board. No slide means the board keeps rotating. |
 | **Swipe backward on the ground** beside the board | Pushes. You can't push faster than you swipe. |
 | **RESET** (top right) | Puts the board back at the start. |
+
+The controls are tuned for **slow, deliberate fingers**: a calm press down the tail (about a
+tenth of a second) pops as well as a sharp flick, and flicking faster gives almost nothing extra
+(`foot_max_speed`). Gravity is lowered (`gravity_multiplier`), so the board hangs in the air.
 
 Tip: start the front-foot slide just after the tail snap. If you slide too early, you press the
 board back down before it pops, just like a real ollie.

@@ -9,8 +9,9 @@ extends Resource
 ## World units per real metre. 10 => the 96 mm board is 0.96 units long,
 ## a comfortable size for the physics engine and the camera.
 @export var world_scale: float = 10.0
-## 1.0 = real gravity (9.81 m/s² scaled to world units). Lower = floatier.
-@export var gravity_multiplier: float = 1.0
+## 1.0 = real gravity (9.81 m/s² scaled to world units). Lower = floatier: longer hang time,
+## slower falls. 0.3 gives the slow, floaty feel (M3); raise toward 1.0 for snappy realism.
+@export var gravity_multiplier: float = 0.3
 ## Fixed physics rate. Higher = more stable contacts, more CPU. Keep a multiple of 60.
 @export var physics_ticks_per_second: int = 120
 
@@ -53,7 +54,7 @@ extends Resource
 ## Air drag on linear motion (1/s). Fingerboards are light, so a little drag matters.
 @export var linear_damp: float = 0.02
 ## Damping of spin (1/s). Higher = board stops rotating sooner in the air.
-@export var angular_damp: float = 1.0
+@export var angular_damp: float = 2.0
 
 @export_group("Wheels")
 ## How fast sideways sliding of a grounded wheel is cancelled (1/s). Keep < ticks/s.
@@ -74,24 +75,28 @@ extends Resource
 ## moves the finger past the tip on screen while, in "real life", it is still on the kick.
 @export var foot_end_margin_mm: float = 30.0
 ## Finger velocity is measured across this many physics ticks (smooths 60 Hz touch input).
-@export var finger_velocity_ticks: int = 6
+@export var finger_velocity_ticks: int = 12
 ## Downward force of a resting finger while the board is on its wheels, in board weights.
 @export var foot_rest_weight: float = 0.25
 ## How fast a pressing finger drives its point of the deck down (units/s) per unit of
 ## press speed (screen heights/s). Press speed = finger speed on screen toward the end of the
 ## board nearest that finger. THE main "pop strength" knob.
-@export var press_speed_gain: float = 2.5
+@export var press_speed_gain: float = 2.4
 ## Press only works on the outer part of the board, where the kicks rise: it fades in from
 ## this distance from the centre (mm) to full strength at the kick bend. Default sits just
 ## inside the bolts, so a front foot slides freely until it reaches the front bolts.
 @export var press_zone_start_mm: float = 15.0
+## Top speed a foot can move the deck at (units/s) — both pressing it down and dragging it
+## along the grip. Above this, flicking harder does nothing more: slow, deliberate fingers
+## get the full effect and the board's reactions stay smooth however fast you flick.
+@export var foot_max_speed: float = 2.2
 ## Finger speeds below this (screen heights/s) don't press — filters jitter.
-@export var press_deadzone: float = 0.3
+@export var press_deadzone: float = 0.15
 ## How quickly a foot gets its point of the deck up to speed (s). Smaller = snappier, harder
 ## feet. Keep ≥ 2 physics ticks (0.017 s at 120 Hz) for stability.
-@export var press_response_time: float = 0.045
+@export var press_response_time: float = 0.09
 ## Upper limit for one finger's press force, in board weights.
-@export var press_max_weights: float = 20.0
+@export var press_max_weights: float = 10.0
 ## How strongly a sliding finger drags the grip tape (1/s, mass-normalised).
 @export var grip_rate: float = 25.0
 ## Grip tape friction coefficient: drag force is capped at grip_mu × press force.
@@ -99,9 +104,9 @@ extends Resource
 
 @export_group("Pop")
 ## Extra bounce when the tail strikes the ground (0 = dead tail, 1 = superball).
-@export var tail_restitution: float = 0.8
+@export var tail_restitution: float = 0.6
 ## Tail strikes slower than this (units/s) don't bounce or buzz.
-@export var pop_min_speed: float = 2.0
+@export var pop_min_speed: float = 1.0
 
 @export_group("Pushing")
 ## Push force per unit of (swipe speed − board speed), mass-normalised (1/s).
@@ -123,9 +128,9 @@ extends Resource
 ## The camera aims this far ahead of the board.
 @export var camera_look_ahead: float = 0.1
 ## How quickly the camera catches up with the board (1/s).
-@export var camera_follow: float = 6.0
+@export var camera_follow: float = 4.0
 ## How quickly the camera swings round to the board's heading (1/s).
-@export var camera_turn_follow: float = 3.0
+@export var camera_turn_follow: float = 2.0
 
 @export_group("Haptics")
 @export var haptics_enabled: bool = true

@@ -8,7 +8,8 @@
 ##                    Back foot: flick DOWN the screen onto the tail. Front foot: drag UP toward
 ##                    the nose. (Kicks rise toward the tips, so a foot driven toward a tip runs
 ##                    into the kick and pushes it down.)
-##      v_target    = press_speed_gain · max(press_speed − deadzone, 0) · zone       (units/s)
+##      v_target    = min(press_speed_gain · max(press_speed − deadzone, 0), foot_max_speed) · zone
+##                    (units/s; the cap keeps reactions smooth however hard you flick)
 ##      zone        = 0 → 1 from press_zone_start to the kick bend: a foot only converts sliding
 ##                    into pressing where the deck rises under it. In the middle it just slides.
 ##      v_point     = how fast that deck point is already moving down
@@ -34,7 +35,8 @@
 ##
 ##   2. DRAG (grip-tape friction, along the deck surface)
 ##      F_t = m · grip_rate · v_slip,  limited to |F_t| ≤ grip_mu · F_press   (Coulomb friction)
-##      v_slip = finger velocity over the deck. You can only drag the board as hard as you press.
+##      v_slip = finger velocity over the deck, capped at foot_max_speed (a fast flick can't
+##      whip the grip tape harder than a deliberate one). You can only drag as hard as you press.
 ##
 ## Forces act at the contact point, not the centre: pressing the tail behind the rear axle
 ## rotates the board nose-up around the rear wheels until the tail hits the ground — the pop.
@@ -59,7 +61,8 @@ static func apply(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
 	var f_n := weight * t.foot_rest_weight if grounded else 0.0
 	var zone := clampf((absf(f.local_pos.z) - t.mm(t.press_zone_start_mm))
 			/ maxf(g.flat_half - t.mm(t.press_zone_start_mm), 1e-4), 0.0, 1.0)
-	var v_target := t.press_speed_gain * maxf(f.press_speed - t.press_deadzone, 0.0) * zone
+	var v_target := minf(t.press_speed_gain * maxf(f.press_speed - t.press_deadzone, 0.0),
+			t.foot_max_speed) * zone
 	if v_target > 0.0:
 		var drive: float
 		if grounded and absf(f.local_pos.z) > g.axle_z:
@@ -70,7 +73,7 @@ static func apply(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
 	state.apply_force(-up * f_n, offset)
 
 	# 2. Drag (grip friction), in the plane of the deck.
-	var slip := basis * Vector3(f.local_vel.x, 0.0, f.local_vel.z)
+	var slip := basis * Vector3(f.local_vel.x, 0.0, f.local_vel.z).limit_length(t.foot_max_speed)
 	var drag := (slip * t.mass_kg() * t.grip_rate).limit_length(t.grip_mu * f_n)
 	state.apply_force(drag, offset)
 
