@@ -7,6 +7,12 @@
 ##     F_roll = −sign(v_roll) · m_share · rolling_resistance, never strong enough to reverse.
 ## Forces act at the contact patch (below the centre of mass), so hard sideways grip also
 ## produces a little roll torque, like a real board.
+##   - Bushing damping (3+ wheels down): trucks' rubber bushings and the wheels' urethane
+##     absorb landings. Spin about the deck's long/cross axes (pitch, roll) is damped with
+##     torque τ = −c · I·ω⊥ (ω⊥ = ω minus its yaw part; I·ω⊥ = angular momentum, so this removes
+##     a fraction c of that spin per second), and rebound along the deck's up axis with
+##     F = −m · c · v_up (only while moving away from the ground: bushings don't pull down).
+##     Needs 3+ wheels so it never fights an ollie, which pivots on the 2 rear wheels.
 class_name WheelPhysics
 extends RefCounted
 
@@ -20,9 +26,15 @@ static func apply(state: PhysicsDirectBodyState3D, wheel_contacts: Array[Vector3
 	var roll_dir := -basis.z                # toward the nose
 	var m_share := t.mass_kg() / wheel_contacts.size()
 	var dt := state.step
+	# Only the yaw part of the spin moves a wheel across the ground. On a real board the deck
+	# rocks (pitch/roll) on the trucks' bushings while the wheels stay planted, so that rocking
+	# must not count as the wheel skidding — otherwise a one-wheel-first landing kicks the
+	# board sideways.
+	var up := basis.y
+	var w_yaw := up * state.angular_velocity.dot(up)
 	for r in wheel_contacts:
-		# Velocity of the board material at the contact: v = v_cm + ω × (r − r_cm).
-		var v := state.linear_velocity + state.angular_velocity.cross(r - state.center_of_mass)
+		# Ground velocity of the wheel: v = v_cm + ω_yaw × (r − r_cm).
+		var v := state.linear_velocity + w_yaw.cross(r - state.center_of_mass)
 		var v_lat := v.dot(axle_dir)
 		state.apply_force(-axle_dir * v_lat * t.wheel_lateral_grip * m_share, r)
 
@@ -31,3 +43,12 @@ static func apply(state: PhysicsDirectBodyState3D, wheel_contacts: Array[Vector3
 		var stop := absf(v_roll) * m_share / dt
 		var f_roll := minf(t.rolling_resistance * m_share, stop)
 		state.apply_force(-roll_dir * signf(v_roll) * f_roll, r)
+
+	if wheel_contacts.size() >= 3 and t.bushing_damping > 0.0:
+		var w := state.angular_velocity
+		var w_perp := w - up * w.dot(up)
+		var inertia_world := state.inverse_inertia_tensor.inverse()
+		state.apply_torque(-(inertia_world * w_perp) * t.bushing_damping)
+		var v_up := state.linear_velocity.dot(up)
+		if v_up > 0.0:
+			state.apply_central_force(-up * v_up * t.mass_kg() * t.bushing_damping)

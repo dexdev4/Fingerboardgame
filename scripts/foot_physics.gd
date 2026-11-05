@@ -101,8 +101,11 @@ static func _drive_about_axle(state: PhysicsDirectBodyState3D, f: Finger, g: Boa
 	i_axle = (1.0 / maxf(i_axle, 1e-9)) + t.mass_kg() * d.length_squared()
 	var m_eff := i_axle / (lever * lever)
 	var hold := t.board_weight() * absf(d.x) / lever
-	# Downward speed of the deck point right now (full motion: on the ground it's all tipping).
+	# Downward speed of the deck point from tipping about the axle: ω × (lever from the axle).
+	# Not the board's full velocity — once the board tilts, plain forward rolling has a
+	# component along the tilted deck normal and would read as "the tail is already going
+	# down", making the foot let go early (fast rolling would kill the pop).
 	var basis := state.transform.basis
-	var r := basis * f.local_pos - state.center_of_mass
-	var v_point := -(state.linear_velocity + state.angular_velocity.cross(r)).dot(basis.y)
+	var lever_arm := basis * (f.local_pos - Vector3(0.0, axle.y, axle.x))
+	var v_point := -state.angular_velocity.cross(lever_arm).dot(basis.y)
 	return m_eff * (v_target - v_point) / t.press_response_time + hold
