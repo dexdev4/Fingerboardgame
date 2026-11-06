@@ -14,6 +14,9 @@ bushings, washers and axle nuts, lipped wheels with bearings).
 that edge, so flip tricks can come out of the physics; the most realistic board yet (curved
 kicks, bumpy grip, wood grain, Phillips bolts, rounded baseplates, a printed wordmark), 4×
 anti-aliasing and film-like colour.
+**Milestone 6:** grinds and slides — solid trucks that lock onto rails and ledge edges, real
+friction between metal trucks / wooden deck and steel, painted or concrete surfaces, and a flat
+bar and a ledge right on the run-up line.
 
 ## The park
 
@@ -52,6 +55,13 @@ tenth of a second) pops as well as a sharp flick, and flicking faster gives almo
 (`foot_max_speed`). Gravity is lowered (`gravity_multiplier`), so the board hangs in the air.
 
 Tip: start the front-foot slide just after the tail snap.
+
+**Grinds and slides:** ollie onto the in-line flat bar (after the manual pad) or the in-line
+ledge (after the low wall). Land with the **trucks** on it for a 50-50 / 5-0 / nosegrind, or
+with the board **across** it for a boardslide. Steel rails and coping are slick (grinds carry
+speed); wood on concrete grabs. On the ledge, the board tips in with its inside wheels on top,
+like a real ledge 50-50. The debug overlay shows "trucks grinding" and "deck sliding".
+Tune with `grind_mu` and `slide_mu` in `board_tuning.tres`.
 
 **Flip attempts:** after the pop, flick your front finger up toward the nose **and off the side**
 of the board. Pushing toward a side edge presses that edge (the deck's concave rises at the rails,
@@ -127,7 +137,8 @@ TRACE=0 godot --headless --path . -s res://tests/test_ollie.gd   # per-tick trac
 ```
 scenes/main.tscn          park, board, camera, input, overlay
 scenes/skatepark.tscn     the park (sky, sun, ground, obstacles, scenery, Spawn marker)
-tools/build_park.gd       generates skatepark.tscn
+tools/build_park.gd       generates skatepark.tscn (overwrites it — careful)
+tools/add_grind_spots.gd  adds the in-line grind spots + slickness tags (keeps your edits)
 tuning/board_tuning.tres  all tuning values (script: scripts/board_tuning.gd)
 scripts/
   main.gd                 wires everything from the tuning resource
@@ -137,6 +148,7 @@ scripts/
   board_visuals.gd        realistic deck (concave, rounded ply edges, worn grip, graphic)
   truck_visuals.gd        trucks, hardware and wheels
   deck_friction.gd        grip/edge friction when the board lands upside down or on its side
+  slide_friction.gd       grind/slide friction for trucks and the deck underside
   mesh_util.gd            mesh helpers (lathe, prisms, materials)
   finger.gd               one touch: role, screen/board position and velocity
   finger_input.gd         touches → feet/push fingers, measured in board space each tick

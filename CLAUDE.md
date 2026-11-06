@@ -114,6 +114,23 @@ Follow these rules in every session. If a request conflicts with them, say so be
   domed silver bolts with Phillips slots, rounded baseplates, "PLAZA 96" wordmark (made-up
   brand), 4x MSAA, AgX tonemap (exposure 1.25), 4-unit shadow distance for a crisp board shadow.
 
+## M6 decisions (grinds and slides)
+
+- Trucks are solid: a "truck" box per hanger, at axle height, between the wheels (BoardBuilder).
+- `SlideFriction`: Coulomb friction for every non-wheel, non-grip contact — μ = grind_mu (truck)
+  or slide_mu (deck underside/kicks) × the obstacle's `slide_friction_scale` meta (steel 0.6,
+  painted 0.8, concrete 1.0). N comes from the real contact impulse: |impulse · n| / dt (Jolt
+  reports impulses). Never more than what stops the slide this tick. No grind-specific code.
+- Contact normals: the board's centre of mass is BELOW the deck, so "orient toward the CoM" flips
+  deck-bottom normals — anything using a normal's sign must not rely on that (use |impulse · n|).
+- A resting finger has weight whenever the board is `supported` (wheels OR trucks/deck on
+  something), not just wheels — so fingers weigh the board down on a rail.
+- Park: `tools/add_grind_spots.gd` ADDS to the existing skatepark.tscn (idempotent, keeps user
+  edits): slickness tags on all obstacles, an in-line flat bar (LineRail, x = 0) and an in-line
+  ledge (LineLedge) whose coped edge is at x = −0.07 — a ledge 50-50 is only stable with the
+  board's centre over the ledge side of the edge (inside wheels on top, board tilted).
+- Side obstacles (ledge, flat bar, handrail) need steering to reach — still not built.
+
 ## Milestones
 
 - **M1 (done)**: project setup, ground, board, chase camera, finger→foot input, ollie via physics,
@@ -122,6 +139,7 @@ Follow these rules in every session. If a request conflicts with them, say so be
 - **M3 (done)**: slower inputs, smoother/slower board reactions, floaty feel.
 - **M4 (done)**: smoother still, high friction for upside-down/side landings, more realistic board.
 - **M5 (done)**: lower gravity, side presses for flip attempts, clean pops, maximum board realism.
+- **M6 (done)**: grinds and slides (solid trucks, contact-impulse friction, in-line rail + ledge).
 - Steering is still not built — ask before adding it. Flip tricks come only from the general
   press physics; never add trick-specific code.
 

@@ -19,6 +19,10 @@ var spawn_xf: Transform3D
 
 # Read by the debug overlay.
 var wheels_down := 0
+## Truck hangers touching something this tick (grinding).
+var truck_contacts := 0
+## Deck underside / kick contacts sliding on something this tick (slides, or a kick on the ground).
+var deck_slide_contacts := 0
 ## Height of the surface under the wheels the last time any wheel touched it.
 var ground_y := 0.0
 
@@ -95,7 +99,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	var wheel_contacts: Array[Vector3] = []
 	var seen_wheels := {}
 	var kick_hits := {}
-	var deck_contacts: Array = []   # non-wheel contacts: [offset, normal]
+	var deck_contacts: Array = []   # non-wheel contacts: [offset, normal, impulse, part, surface scale]
 	for i in state.get_contact_count():
 		var shape := state.get_contact_local_shape(i)
 		var part: String = parts.get(shape, "deck")
@@ -105,11 +109,17 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 			seen_wheels[shape] = true
 			wheel_contacts.append(r)
 		if part != "wheel":
-			# Orient the normal from the surface into the board (works on walls and steps too).
+			# Orient the normal roughly from the surface into the board. (The centre of mass sits
+			# below the deck, so this is approximate for deck-bottom contacts; SlideFriction uses
+			# |impulse · n| and DeckFriction only needs the normal's line, so the sign is harmless.)
 			var nn := state.get_contact_local_normal(i)
 			if nn.dot(state.center_of_mass - r) < 0.0:
 				nn = -nn
-			deck_contacts.append([r, nn])
+			var surface := state.get_contact_collider_object(i)
+			var scale := 1.0
+			if surface != null and surface.has_meta("slide_friction_scale"):
+				scale = surface.get_meta("slide_friction_scale")
+			deck_contacts.append([r, nn, state.get_contact_impulse(i), part, scale])
 		if part == "tail" or part == "nose":
 			# A kick usually touches at several corner points; accumulate them so the bounce is
 			# applied at their average (one corner alone would twist the board).
@@ -124,14 +134,19 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		ground_y = state.transform.origin.y + sum / wheels_down
 
 	# --- Forces. ---
+	# Resting on anything (wheels, or trucks/deck on a rail or ledge) = fingers have weight on it.
+	var supported := wheels_down > 0 or not deck_contacts.is_empty()
 	input.physics_update(state.transform, state.get_space_state(), dt)
 	for f in input.feet():
 		# Is the kick at this foot's end already on the ground? Then it can't be pushed further.
 		var end_down := kick_hits.has("tail" if f.local_pos.z > 0.0 else "nose")
-		FootPhysics.apply(state, f, geo, tuning, wheels_down > 0, end_down)
+		FootPhysics.apply(state, f, geo, tuning, wheels_down > 0, supported, end_down)
 	PushPhysics.apply(state, input.pushers(), wheels_down, tuning)
 	WheelPhysics.apply(state, wheel_contacts, tuning)
 	DeckFriction.apply(state, deck_contacts, geo, tuning)
+	var sliding := SlideFriction.apply(state, deck_contacts, geo, tuning)
+	truck_contacts = sliding.x
+	deck_slide_contacts = sliding.y
 
 	# --- Events. ---
 	for part in ["tail", "nose"]:

@@ -5,7 +5,7 @@ class_name BoardBuilder
 extends RefCounted
 
 ## Adds CollisionShape3D children to `body`. Returns {shape_index: part_name} where
-## part_name is "deck", "nose", "tail" or "wheel".
+## part_name is "deck", "nose", "tail", "truck" or "wheel".
 static func build_collision(body: RigidBody3D, g: BoardGeometry) -> Dictionary:
 	var deck_size := Vector3(g.half_width * 2.0, g.thickness, g.flat_half * 2.0)
 	_add_box(body, "deck", deck_size, Transform3D.IDENTITY)
@@ -31,6 +31,14 @@ static func build_collision(body: RigidBody3D, g: BoardGeometry) -> Dictionary:
 			cs.position = Vector3(x, g.wheel_y, z)
 			cs.set_meta("part", "wheel")
 			body.add_child(cs)
+
+	# Truck hangers: a solid bar between the wheels at axle height, so the trucks can sit on a
+	# rail or ledge edge (50-50, 5-0, nosegrind). Its bottom is well above the wheel bottoms
+	# (wheel radius − half its height), so on flat ground only the wheels touch.
+	var reach := g.wheel_x - g.wheel_width * 0.5
+	var bar := Vector3(reach * 2.0, g.wheel_radius * 0.6, g.wheel_radius * 0.6)
+	for z in [-g.axle_z, g.axle_z]:
+		_add_box(body, "truck", bar, Transform3D(Basis.IDENTITY, Vector3(0.0, g.wheel_y, z)))
 
 	# Map the physics engine's shape indices to our part names (used to read contacts).
 	var parts := {}

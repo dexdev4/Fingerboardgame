@@ -53,9 +53,9 @@ func _process(_dt: float) -> void:
 	_reset.position = Vector2(size.x - _reset.size.x - 16 * ui, 16 * ui)
 
 	var a := board.angles_deg()
-	_label.text = "speed  %6.1f cm/s\nheight %6.1f mm\npitch  %6.1f°   roll %6.1f°   yaw %6.1f°\nwheels down %d   last pop %.1f u/s\n%d fps" % [
+	_label.text = "speed  %6.1f cm/s\nheight %6.1f mm\npitch  %6.1f°   roll %6.1f°   yaw %6.1f°\nwheels down %d   trucks grinding %d   deck sliding %d   last pop %.1f u/s\n%d fps" % [
 		board.speed_cm_s(), board.height_mm(), a.x, a.y, a.z,
-		board.wheels_down, _last_pop, Engine.get_frames_per_second()]
+		board.wheels_down, board.truck_contacts, board.deck_slide_contacts, _last_pop, Engine.get_frames_per_second()]
 	_canvas.queue_redraw()
 
 

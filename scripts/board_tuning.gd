@@ -79,6 +79,14 @@ extends Resource
 ## How quickly that friction stops sliding (1/s, mass-normalised). Keep < ticks/s.
 @export var deck_stick_rate: float = 40.0
 
+@export_group("Grinds and slides")
+## Friction of the metal trucks sliding on things (50-50s, 5-0s, nosegrinds). Steel on steel or
+## waxed concrete is slick: ~0.15. Lower = grinds carry speed further.
+@export var grind_mu: float = 0.15
+## Friction of the wooden deck bottom / kicks sliding (boardslides, tailslides, noseslides).
+## Grabbier than trucks: ~0.3. Each obstacle multiplies these by its "slide_friction_scale".
+@export var slide_mu: float = 0.3
+
 @export_group("Feet (fingers on the board)")
 ## Shifts the back/front split along the board (mm, + toward the tail).
 @export var foot_split_mm: float = 0.0

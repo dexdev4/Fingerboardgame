@@ -22,7 +22,7 @@
 ##      F_drive     = m_eff · (v_target − v_point) / τ + F_hold, clamped ≥ 0
 ##                    τ = press_response_time for end presses (smooth), press_side_response_time
 ##                    for side flicks (quick: they only touch the rail briefly), blended by share
-##      F_press     = W·rest_weight (only while grounded) + min(F_drive, W·press_max_weights)
+##      F_press     = W·rest_weight (only while supported) + min(F_drive, W·press_max_weights)
 ##      A resting finger has weight on a board standing on its wheels. In the air a still finger
 ##      rises with the board (like a skater lifting their feet) — it must not keep pushing, or
 ##      a finger resting on the tail would keep spinning the 14 g board.
@@ -53,9 +53,12 @@ class_name FootPhysics
 extends RefCounted
 
 
+## `grounded`: wheels on the ground (the board can tip about an axle).
+## `supported`: the board is resting on something — wheels, or trucks/deck on a rail or ledge —
+## so a resting finger has weight on it (it doesn't in mid-air).
 ## `end_down`: the kick at this foot's end (tail for the back foot) is touching the ground.
 static func apply(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
-		t: BoardTuning, grounded: bool, end_down: bool) -> void:
+		t: BoardTuning, grounded: bool, supported: bool, end_down: bool) -> void:
 	f.press_force = 0.0
 	f.drag_force = 0.0
 	if not f.on_board:
@@ -67,7 +70,7 @@ static func apply(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
 	var offset := basis * f.local_pos
 
 	# 1. Press.
-	var f_n := weight * t.foot_rest_weight if grounded else 0.0
+	var f_n := weight * t.foot_rest_weight if supported else 0.0
 	var zone := clampf((absf(f.local_pos.z) - t.mm(t.press_zone_start_mm))
 			/ maxf(g.flat_half - t.mm(t.press_zone_start_mm), 1e-4), 0.0, 1.0)
 	var side_start := t.mm(t.press_side_zone_start_mm)

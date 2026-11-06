@@ -23,18 +23,21 @@ extends RefCounted
 const EDGE_FRACTION := 0.85
 
 
-## `contacts`: [offset from body origin (global orientation), normal] pairs for non-wheel contacts.
+## True if a board-local contact point is on the grip side or the edge of the deck.
+## Edge = out at the rail AND not on the bottom face (a kick's bottom corners are also at the
+## rail, and they belong to the underside — slides — not the grip).
+static func is_grip_side(p: Vector3, g: BoardGeometry) -> bool:
+	var mid := g.surface_y(p.z) - g.thickness * 0.5     # deck mid-plane height at this z
+	var on_edge := absf(p.x) > g.half_width * EDGE_FRACTION and p.y > mid - g.thickness * 0.25
+	return p.y > mid or on_edge
+
+
+## `contacts`: [offset from body origin (global orientation), normal, ...] for non-wheel contacts.
 static func apply(state: PhysicsDirectBodyState3D, contacts: Array, g: BoardGeometry, t: BoardTuning) -> void:
 	var to_local := state.transform.basis.inverse()
 	var touching: Array = []
 	for c in contacts:
-		var p: Vector3 = to_local * (c[0] as Vector3)
-		var mid := g.surface_y(p.z) - g.thickness * 0.5     # deck mid-plane height at this z
-		var on_grip := p.y > mid
-		# Edge = out at the rail AND not on the bottom face (a kick's bottom corners are also
-		# at the rail, and they must slide freely when the tail strikes).
-		var on_edge := absf(p.x) > g.half_width * EDGE_FRACTION and p.y > mid - g.thickness * 0.25
-		if on_grip or on_edge:
+		if is_grip_side(to_local * (c[0] as Vector3), g):
 			touching.append(c)
 	if touching.is_empty():
 		return

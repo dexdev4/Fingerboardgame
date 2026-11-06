@@ -1,4 +1,4 @@
-[gd_scene load_steps=165 format=4]
+[gd_scene load_steps=174 format=4]
 
 [ext_resource type="Shader" path="res://shaders/concrete.gdshader" id="1_quwfj"]
 [ext_resource type="Shader" path="res://shaders/grass.gdshader" id="2_6mtxe"]
@@ -741,6 +741,47 @@ radial_segments = 16
 [sub_resource type="BoxMesh" id="BoxMesh_rqh8i"]
 size = Vector3(0.6, 0.15, 0.3)
 
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_quwfj"]
+height = 3.0
+radius = 0.02
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_6mtxe"]
+top_radius = 0.02
+bottom_radius = 0.02
+height = 3.0
+radial_segments = 16
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_pltqg"]
+height = 0.1
+radius = 0.016
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_ehus5"]
+top_radius = 0.016
+bottom_radius = 0.016
+height = 0.1
+radial_segments = 16
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_spa2m"]
+height = 0.1
+radius = 0.016
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_kcdnl"]
+top_radius = 0.016
+bottom_radius = 0.016
+height = 0.1
+radial_segments = 16
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_8wnb5"]
+size = Vector3(0.8, 0.15, 5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_tgcaw"]
+size = Vector3(0.8, 0.15, 5)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_3dgpa"]
+top_radius = 0.008
+bottom_radius = 0.008
+height = 5.0
+
 [node name="Skatepark" type="Node3D"]
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
@@ -756,6 +797,7 @@ directional_shadow_mode = 0
 directional_shadow_max_distance = 4.0
 
 [node name="Ground" type="StaticBody3D" parent="."]
+metadata/slide_friction_scale = 1.0
 
 [node name="@CollisionShape3D@2" type="CollisionShape3D" parent="Ground"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
@@ -775,6 +817,7 @@ mesh = SubResource("PlaneMesh_vf511")
 
 [node name="Platform" type="StaticBody3D" parent="StairSet"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.225, 2)
+metadata/slide_friction_scale = 1.0
 
 [node name="@CollisionShape3D@3" type="CollisionShape3D" parent="StairSet/Platform"]
 shape = SubResource("BoxShape3D_xbt7r")
@@ -785,6 +828,7 @@ mesh = SubResource("BoxMesh_i2fu0")
 
 [node name="Step1" type="StaticBody3D" parent="StairSet"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, -1.15)
+metadata/slide_friction_scale = 1.0
 
 [node name="@CollisionShape3D@6" type="CollisionShape3D" parent="StairSet/Step1"]
 shape = SubResource("BoxShape3D_t70qt")
@@ -795,6 +839,7 @@ mesh = SubResource("BoxMesh_feo5p")
 
 [node name="Step2" type="StaticBody3D" parent="StairSet"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.075, -1.45)
+metadata/slide_friction_scale = 1.0
 
 [node name="@CollisionShape3D@9" type="CollisionShape3D" parent="StairSet/Step2"]
 shape = SubResource("BoxShape3D_dpwaa")
@@ -805,6 +850,7 @@ mesh = SubResource("BoxMesh_ff8rc")
 
 [node name="Handrail" type="StaticBody3D" parent="StairSet"]
 transform = Transform3D(1, 0, 0, 0, -0.4061384, 0.91381156, 0, -0.91381156, -0.4061384, 1.8, 0.37, -1.3499999)
+metadata/slide_friction_scale = 0.6
 
 [node name="@CollisionShape3D@12" type="CollisionShape3D" parent="StairSet/Handrail"]
 shape = SubResource("CylinderShape3D_0eosi")
@@ -815,6 +861,7 @@ mesh = SubResource("CylinderMesh_rdvcy")
 
 [node name="RailPostTop" type="StaticBody3D" parent="StairSet"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.8, 0.51, -0.9)
+metadata/slide_friction_scale = 0.6
 
 [node name="@CollisionShape3D@14" type="CollisionShape3D" parent="StairSet/RailPostTop"]
 shape = SubResource("CylinderShape3D_05io1")
@@ -825,6 +872,7 @@ mesh = SubResource("CylinderMesh_duh0n")
 
 [node name="RailPostBottom" type="StaticBody3D" parent="StairSet"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.8, 0.085, -1.8)
+metadata/slide_friction_scale = 0.6
 
 [node name="@CollisionShape3D@16" type="CollisionShape3D" parent="StairSet/RailPostBottom"]
 shape = SubResource("CylinderShape3D_reci0")
@@ -856,6 +904,7 @@ mesh = SubResource("CylinderMesh_opnpq")
 
 [node name="Bank" type="StaticBody3D" parent="."]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -3.75, 0, 2)
+metadata/slide_friction_scale = 1.0
 
 [node name="@CollisionShape3D@18" type="CollisionShape3D" parent="Bank"]
 shape = SubResource("ConvexPolygonShape3D_fwbpf")
@@ -866,6 +915,7 @@ mesh = SubResource("ArrayMesh_ve1ls")
 
 [node name="ManualPad" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.035, -6.5)
+metadata/slide_friction_scale = 1.0
 
 [node name="@CollisionShape3D@20" type="CollisionShape3D" parent="ManualPad"]
 shape = SubResource("BoxShape3D_d7r38")
@@ -890,6 +940,7 @@ mesh = SubResource("CylinderMesh_voygh")
 
 [node name="Kicker" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -13)
+metadata/slide_friction_scale = 1.0
 
 [node name="@CollisionShape3D@25" type="CollisionShape3D" parent="Kicker"]
 shape = SubResource("ConvexPolygonShape3D_clmcb")
@@ -900,6 +951,7 @@ mesh = SubResource("ArrayMesh_8sl26")
 
 [node name="Ledge" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.4, 0.1, -8)
+metadata/slide_friction_scale = 0.8
 
 [node name="@CollisionShape3D@27" type="CollisionShape3D" parent="Ledge"]
 shape = SubResource("BoxShape3D_w6d5b")
@@ -917,6 +969,7 @@ mesh = SubResource("CylinderMesh_hnd3s")
 
 [node name="FlatBar" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, -2.2, 0.12, -8.5)
+metadata/slide_friction_scale = 0.6
 
 [node name="@CollisionShape3D@30" type="CollisionShape3D" parent="FlatBar"]
 shape = SubResource("CylinderShape3D_46hsw")
@@ -927,6 +980,7 @@ mesh = SubResource("CylinderMesh_vxu1v")
 
 [node name="FlatBarLeg" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.2, 0.06, -6.2)
+metadata/slide_friction_scale = 0.6
 
 [node name="@CollisionShape3D@32" type="CollisionShape3D" parent="FlatBarLeg"]
 shape = SubResource("CylinderShape3D_yxo2s")
@@ -937,6 +991,7 @@ mesh = SubResource("CylinderMesh_v51fe")
 
 [node name="@StaticBody3D@36" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.2, 0.06, -10.8)
+metadata/slide_friction_scale = 0.6
 
 [node name="@CollisionShape3D@34" type="CollisionShape3D" parent="@StaticBody3D@36"]
 shape = SubResource("CylinderShape3D_tufjn")
@@ -947,6 +1002,7 @@ mesh = SubResource("CylinderMesh_mqxra")
 
 [node name="LowWall" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.07, -18)
+metadata/slide_friction_scale = 1.0
 
 [node name="@CollisionShape3D@37" type="CollisionShape3D" parent="LowWall"]
 shape = SubResource("BoxShape3D_jontf")
@@ -964,6 +1020,7 @@ mesh = SubResource("CylinderMesh_h3hw6")
 
 [node name="Bench" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.6, 0.21000001, -14)
+metadata/slide_friction_scale = 1.0
 
 [node name="@CollisionShape3D@40" type="CollisionShape3D" parent="Bench"]
 shape = SubResource("BoxShape3D_1rm2g")
@@ -974,6 +1031,7 @@ mesh = SubResource("BoxMesh_66vjg")
 
 [node name="BenchLeg" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.6, 0.09, -14.65)
+metadata/slide_friction_scale = 1.0
 
 [node name="@CollisionShape3D@42" type="CollisionShape3D" parent="BenchLeg"]
 shape = SubResource("BoxShape3D_sic4j")
@@ -984,6 +1042,7 @@ mesh = SubResource("BoxMesh_1g602")
 
 [node name="@StaticBody3D@46" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.6, 0.09, -13.35)
+metadata/slide_friction_scale = 1.0
 
 [node name="@CollisionShape3D@44" type="CollisionShape3D" parent="@StaticBody3D@46"]
 shape = SubResource("BoxShape3D_1iqf0")
@@ -994,6 +1053,7 @@ mesh = SubResource("BoxMesh_0hrtg")
 
 [node name="Planter" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.8, 0.125, -14)
+metadata/slide_friction_scale = 1.0
 
 [node name="@CollisionShape3D@47" type="CollisionShape3D" parent="Planter"]
 shape = SubResource("BoxShape3D_e6u6c")
@@ -1031,6 +1091,7 @@ mesh = SubResource("SphereMesh_w3vdp")
 
 [node name="Bench2" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.6, 0.21000001, -20)
+metadata/slide_friction_scale = 1.0
 
 [node name="@CollisionShape3D@54" type="CollisionShape3D" parent="Bench2"]
 shape = SubResource("BoxShape3D_f2pw1")
@@ -1041,6 +1102,7 @@ mesh = SubResource("BoxMesh_ttfrw")
 
 [node name="@StaticBody3D@59" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.6, 0.09, -20.65)
+metadata/slide_friction_scale = 1.0
 
 [node name="@CollisionShape3D@57" type="CollisionShape3D" parent="@StaticBody3D@59"]
 shape = SubResource("BoxShape3D_pvh7l")
@@ -1051,6 +1113,7 @@ mesh = SubResource("BoxMesh_0u2e4")
 
 [node name="@StaticBody3D@62" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.6, 0.09, -19.35)
+metadata/slide_friction_scale = 1.0
 
 [node name="@CollisionShape3D@60" type="CollisionShape3D" parent="@StaticBody3D@62"]
 shape = SubResource("BoxShape3D_x7tia")
@@ -1061,6 +1124,7 @@ mesh = SubResource("BoxMesh_po1cm")
 
 [node name="@StaticBody3D@65" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.8, 0.125, -20)
+metadata/slide_friction_scale = 1.0
 
 [node name="@CollisionShape3D@63" type="CollisionShape3D" parent="@StaticBody3D@65"]
 shape = SubResource("BoxShape3D_4xo6v")
@@ -1434,3 +1498,53 @@ mesh = SubResource("BoxMesh_rqh8i")
 
 [node name="Spawn" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 4.2)
+
+[node name="LineRail" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0.1, -10.4)
+metadata/slide_friction_scale = 0.6
+metadata/note = "In line with the run-up: ollie on for a 50-50 or a boardslide."
+
+[node name="@CollisionShape3D@2" type="CollisionShape3D" parent="LineRail"]
+shape = SubResource("CylinderShape3D_quwfj")
+
+[node name="@MeshInstance3D@3" type="MeshInstance3D" parent="LineRail"]
+material_override = SubResource("StandardMaterial3D_wt52d")
+mesh = SubResource("CylinderMesh_6mtxe")
+
+[node name="LineRailLeg" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, -9.05)
+metadata/slide_friction_scale = 0.6
+
+[node name="@CollisionShape3D@4" type="CollisionShape3D" parent="LineRailLeg"]
+shape = SubResource("CylinderShape3D_pltqg")
+
+[node name="@MeshInstance3D@5" type="MeshInstance3D" parent="LineRailLeg"]
+material_override = SubResource("StandardMaterial3D_wt52d")
+mesh = SubResource("CylinderMesh_ehus5")
+
+[node name="@StaticBody3D@8" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, -11.75)
+metadata/slide_friction_scale = 0.6
+
+[node name="@CollisionShape3D@6" type="CollisionShape3D" parent="@StaticBody3D@8"]
+shape = SubResource("CylinderShape3D_spa2m")
+
+[node name="@MeshInstance3D@7" type="MeshInstance3D" parent="@StaticBody3D@8"]
+material_override = SubResource("StandardMaterial3D_wt52d")
+mesh = SubResource("CylinderMesh_kcdnl")
+
+[node name="LineLedge" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.33, 0.075, -21.9)
+metadata/slide_friction_scale = 0.6
+
+[node name="@CollisionShape3D@9" type="CollisionShape3D" parent="LineLedge"]
+shape = SubResource("BoxShape3D_8wnb5")
+
+[node name="@MeshInstance3D@10" type="MeshInstance3D" parent="LineLedge"]
+material_override = SubResource("ShaderMaterial_8wnb5")
+mesh = SubResource("BoxMesh_tgcaw")
+
+[node name="@MeshInstance3D@11" type="MeshInstance3D" parent="LineLedge"]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, -0.4, 0.075, 0)
+material_override = SubResource("StandardMaterial3D_wt52d")
+mesh = SubResource("CylinderMesh_3dgpa")

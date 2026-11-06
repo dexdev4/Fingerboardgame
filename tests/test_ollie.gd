@@ -25,6 +25,12 @@ var upside_start := Vector3.ZERO
 var roll_total := 0.0
 var straight_roll := 0.0
 var roll_peak := 0.0      # largest |roll| reached during the scenario, degrees
+## Grind/slide scenarios: per tick [truck contacts, deck-slide contacts, z, speed cm/s].
+var contact_rows: Array = []
+var slide_results := {}
+## Grind/slide scenarios: drop speed (units/s) and how high above the obstacle to release (units).
+const DROP_SPEED := 4.0
+const DROP_GAP := 0.01
 ## Roll-in speed for the stairs scenario (units/s; 10 units/s = 1 m/s real).
 const STAIRS_SPEED := 5.0
 ## Finger timing (physics ticks at 120/s). The controls are tuned for slow, deliberate fingers:
@@ -54,6 +60,7 @@ func _start_scenario() -> void:
 	tick = 0
 	roll_total = 0.0
 	roll_peak = 0.0
+	contact_rows.clear()
 	log_rows.clear()
 	schedule.clear()
 	match scenario:
@@ -64,6 +71,9 @@ func _start_scenario() -> void:
 		4: _plan_stairs()
 		5: _plan_upside_down()
 		6: _plan_flip_attempt()
+		7: _plan_drop_on("rail", false)
+		8: _plan_drop_on("rail", true)
+		9: _plan_drop_on("ledge", false)
 		_:
 			_finish()
 
@@ -88,6 +98,8 @@ func _physics_process(_dt: float) -> bool:
 	var a := board.angles_deg()
 	roll_total += rad_to_deg(board.angular_velocity.dot(board.global_transform.basis.z)) / Engine.physics_ticks_per_second
 	roll_peak = maxf(roll_peak, absf(roll_total))
+	if tick >= SETTLE:
+		contact_rows.append([board.truck_contacts, board.deck_slide_contacts, board.global_position.z, board.speed_cm_s()])
 	if OS.get_environment("TRACE") == str(scenario) and tick >= SETTLE and tick < SETTLE + 200:
 		var fs := ""
 		for f: Finger in input.fingers.values():
@@ -135,6 +147,25 @@ func _plan_move(idx: int, start_tick: int, from: Vector2, delta: Vector2, ticks:
 
 func _plan_ollie(slide: bool) -> void:
 	schedule.append([SETTLE, func(): _ollie_now(SETTLE, slide)])
+
+
+## Drop the board (moving along the line at DROP_SPEED) just above an in-line obstacle:
+##   "rail"  → the LineRail flat bar (top at y = 0.12), "ledge" → the LineLedge edge (top 0.15).
+## sideways = board turned 90° across the rail, deck bottom on it (boardslide); otherwise the
+## trucks land on it (50-50). No fingers: this tests the grind/slide physics on its own.
+func _plan_drop_on(what: String, sideways: bool) -> void:
+	schedule.append([SETTLE, func():
+		var g := board.geo
+		var top := 0.12 if what == "rail" else 0.15
+		var z := -9.4 if what == "rail" else -20.0
+		var basis := Basis.IDENTITY
+		var y: float
+		if sideways:
+			basis = Basis(Vector3.UP, PI * 0.5)
+			y = top + DROP_GAP + g.thickness * 0.5            # deck bottom just above the rail
+		else:
+			y = top + DROP_GAP - (g.wheel_y - g.wheel_radius * 0.3)   # hanger bottom just above
+		board.request_reset(Transform3D(basis, Vector3(0, y, z)), Vector3(0, 0, -DROP_SPEED))])   # on the line, x = 0
 
 
 ## Pop, then slide the front finger up AND off the side of the nose — a kickflip-style flick.
@@ -197,7 +228,8 @@ func _plan_push() -> void:
 
 func _report() -> void:
 	var names := ["ollie + front slide", "ollie, no front slide", "push", "ollie + slide (repeat)",
-			"ollie down the stairs", "upside-down landing", "flip attempt (front finger off the side)"]
+			"ollie down the stairs", "upside-down landing", "flip attempt (front finger off the side)",
+			"50-50 on the flat bar", "boardslide on the flat bar", "50-50 on the ledge edge"]
 	var max_h := 0.0
 	var max_pitch := 0.0
 	var max_speed := 0.0
@@ -217,6 +249,8 @@ func _report() -> void:
 	_feel_metrics()
 	results[scenario] = log_rows.duplicate(true)
 	print("  roll: peak %.0f°, net %.0f°" % [roll_peak, roll_total])
+	if scenario >= 7:
+		_report_grind(1 if scenario == 8 else 0)
 	match scenario:
 		0:
 			straight_roll = roll_peak
@@ -284,6 +318,29 @@ func _feel_metrics() -> void:
 		peak_v = maxf(peak_v, r[3])
 	print("  feel: peak spin %.1f rad/s | bounces %d | settle %d ticks | coast %.0f%% of peak speed | yaw drift %.1f°"
 			% [peak_spin, bounces, settle, 100.0 * rows[-1][3] / maxf(peak_v, 0.001), board.angles_deg().z])
+
+
+## How long/far the board stayed on the obstacle via trucks (col 0) or deck (col 1).
+func _report_grind(col: int) -> void:
+	var first := -1
+	var last := -1
+	for i in contact_rows.size():
+		if contact_rows[i][col] > 0:
+			if first < 0:
+				first = i
+			last = i
+	if first < 0:
+		print("  never made contact")
+		_expect(false, "board locks onto the obstacle")
+		return
+	var dist := absf(contact_rows[last][2] - contact_rows[first][2])
+	var v0: float = contact_rows[first][3]
+	var v1: float = contact_rows[last][3]
+	print("  on the obstacle for %d ticks (%.2f s), %.0f mm real, speed %.0f → %.0f cm/s, roll peak %.0f°"
+			% [last - first + 1, (last - first + 1) / 120.0, dist * 100.0, v0, v1, roll_peak])
+	_expect(dist > 0.8, "stays locked on for a real distance (>8 cm)")
+	_expect(v1 < v0, "friction slows it down (a grind/slide, not ice)")
+	slide_results[col] = [dist, v0 - v1, last - first + 1]
 
 
 func _expect(ok: bool, what: String) -> void:
