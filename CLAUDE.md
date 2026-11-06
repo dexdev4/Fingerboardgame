@@ -164,6 +164,25 @@ Follow these rules in every session. If a request conflicts with them, say so be
   The in-line obstacles stay; with steering, the side spots are reachable now.
 - Board: tail/nose wear scraped through the graphic, worn grip on the tail, tapered hangers.
 
+## M9 decisions (predictable flips)
+
+- Flips need deliberate input: side presses have their own deadzone (press_side_deadzone 0.35,
+  above press_deadzone) and the finger must cross the deck toward the rail in board space.
+- **Predictability = a roll-rate ceiling**: once the board already rolls at press_side_max_roll
+  (36 rad/s) toward the flicked rail, the flick adds nothing. Normal and hard flicks both give
+  ~one kickflip (tests: soft 205°, normal 338°, hard 328°). Rejected attempts (see git history):
+  capping point speed (depends on finger position), a pure-torque flick (no nose levelling →
+  tail scrapes mid-flip), extra "flat foot" levelling (little effect).
+- The window for a flip is short (~0.17 s) because ollies pitch ~60° and the tail comes back
+  near the ground; tests use a quick 12-tick flick (FLIP_FLICK_TICKS), not the slow ollie slide.
+- Caught fingers don't flick (they catch/adjust). catch_adjust_gain 3 (a sole twists the board).
+- Scoop (`_scoop_spin`): a foot on the kick that last POPPED (`Board._popped_end`) sweeping
+  sideways spins the board about the WORLD vertical, capped at press_scoop_max_spin. KNOWN GAP:
+  in tests it adds some spin but doesn't reliably reach a 360 shove; the 360-flip spin check is
+  reported, not asserted. The flip half of a 360 flip works.
+- Test spin metric is about the world vertical; heading for catch-adjust is read at touchdown
+  (after landing, a finger off-centre steers the board).
+
 ## Milestones
 
 - **M1 (done)**: project setup, ground, board, chase camera, finger→foot input, ollie via physics,
@@ -175,6 +194,8 @@ Follow these rules in every session. If a request conflicts with them, say so be
 - **M6 (done)**: grinds and slides (solid trucks, contact-impulse friction, in-line rail + ledge).
 - **M7 (done)**: portrait mode.
 - **M8 (done)**: True Skate-style feel, catching/adjusting in the air, steering, detailed map.
+- **M9 (done, partial)**: predictable kickflips (more input needed, one flip however hard).
+  360 flip: flip works, the shove-it spin is a known gap.
 - Flip tricks, catches and turns come only from the general finger physics; never add
   trick-specific code.
 

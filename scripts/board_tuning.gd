@@ -96,6 +96,9 @@ extends Resource
 ## board's spin toward what the finger is doing over this time (s): hold still = stop the spin,
 ## drag = rotate the board (adjust it before landing). Keep ≥ 2 ticks.
 @export var catch_hold_time: float = 0.06
+## How strongly dragging a caught finger turns the board (1 = only as fast as the finger's point
+## moves; higher = the foot twists it, like a real sole). Adjusting flips/shove-its mid-air.
+@export var catch_adjust_gain: float = 3.0
 ## ...and presses it level (deck up → world up) over this time (s), like a flat foot.
 @export var catch_level_time: float = 0.15
 ## Only levels when the grip faces up at least this much (deck up · world up): you can't catch
@@ -134,20 +137,34 @@ extends Resource
 ## along the grip. Above this, flicking harder does nothing more: slow, deliberate fingers
 ## get the full effect and the board's reactions stay smooth however fast you flick.
 @export var foot_max_speed: float = 3.5
-## Side presses: a finger driven toward the nearest RAIL (side edge) presses that edge, because
-## the concave rises toward the rails just like the kicks rise toward the ends. Strength relative
-## to end presses (0 = off). On the ground the wheels stop the board rolling; in the air it rolls
-## (flip tricks: pop, then flick the front finger off the side).
+## Side presses: a finger driven toward the nearest RAIL presses that edge, because the concave
+## rises toward the rails just like the kicks rise toward the ends. Strength relative to end
+## presses. On the ground the wheels stop the board rolling; in the air it rolls (flip tricks:
+## pop, then flick the front finger off the side).
 @export var press_side_gain: float = 16.0
-## Top speed a side press can drive the rail at (units/s). Separate from foot_max_speed so
-## flips can come round in one hang time while ollies keep the slow, smooth feel.
+## A side flick must be at least this fast (screen units/s) before it presses the rail at all —
+## higher than press_deadzone, so flips need a deliberate flick off the side, not a wobble.
+@export var press_side_deadzone: float = 0.35
+## Top speed a side press can drive the rail at (units/s).
 @export var press_side_max_speed: float = 16.0
+## Fastest a flick can ROLL the board (rad/s): once the board rolls this fast toward the flicked
+## rail, the flick adds no more. Makes flips predictable — a normal or hard flick both give about
+## one rotation (it has ~0.17 s before the tail comes back near the ground: 36 rad/s ≈ 1 flip).
+## THE "how much does a kickflip spin" knob (lower = lazier flips, higher = more spin).
+@export var press_side_max_roll: float = 36.0
 ## Response time for side presses (s). A flick off the side touches the rail only briefly, so
 ## it needs a quicker foot than the smooth ollie press (press_response_time). Keep ≥ 2 ticks.
 @export var press_side_response_time: float = 0.03
 ## A side press only counts if the finger crosses the deck toward that rail at least this fast
 ## (units/s, measured on the board; 0.5 = 5 cm/s real). Stops straight slides rolling the board.
 @export var press_side_min_cross_speed: float = 0.5
+## Scoops (shove-it spin): a foot on a kick sweeping sideways pushes that end round. Spin per
+## unit of "spin that matches the foot" (1 = the end moves sideways exactly as fast as the foot).
+@export var press_scoop_gain: float = 4.0
+## Fastest a scoop can spin the board (rad/s) — ~one 360 in a normal pop, however hard you scoop.
+@export var press_scoop_max_spin: float = 18.0
+## A scoop must move sideways across the deck at least this fast (units/s; 1 = 10 cm/s real).
+@export var press_scoop_min_speed: float = 0.4
 ## Side presses fade in from this distance from the centre line (mm) to full at the rail.
 ## The deck is 28 mm wide, so the rail is at 14 mm.
 @export var press_side_zone_start_mm: float = 3.0

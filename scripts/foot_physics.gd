@@ -57,8 +57,9 @@ extends RefCounted
 ## `supported`: the board is resting on something — wheels, or trucks/deck on a rail or ledge —
 ## so a resting finger has weight on it (it doesn't in mid-air).
 ## `end_down`: the kick at this foot's end (tail for the back foot) is touching the ground.
+## `popped_end`: which kick popped last (+1 tail, −1 nose, 0 none) — the one a foot can scoop.
 static func apply(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
-		t: BoardTuning, grounded: bool, supported: bool, end_down: bool) -> void:
+		t: BoardTuning, grounded: bool, supported: bool, end_down: bool, popped_end: float = 0.0) -> void:
 	f.press_force = 0.0
 	f.drag_force = 0.0
 	if not f.on_board:
@@ -79,7 +80,18 @@ static func apply(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
 	# straight into the ground. Without this a foot still "following through" pins the tail
 	# down and levers the board up onto its tail instead of letting it pop off.
 	var push_end := 0.0 if end_down else maxf(f.press_speed - t.press_deadzone, 0.0) * zone
-	var push_side := maxf(f.press_speed_side - t.press_deadzone, 0.0) * zone_side * t.press_side_gain
+	var push_side := maxf(f.press_speed_side - t.press_side_deadzone, 0.0) * zone_side * t.press_side_gain
+	# Predictable flips: once the board is already rolling toward this rail at press_side_max_roll,
+	# the flick adds no more. However hard you flick, the roll tops out at the same rate, so a
+	# kickflip is about one rotation in a normal hang time instead of "harder = more spins".
+	# (Right rail (x > 0) going down = negative spin about the board's long +Z axis.)
+	var roll_toward := -state.angular_velocity.dot(basis.z) * signf(f.local_pos.x)
+	if roll_toward >= t.press_side_max_roll:
+		push_side = 0.0
+	# A finger that caught the board in the air is catching/adjusting it (CatchPhysics), not
+	# flicking: dragging it sideways turns the board under it instead of flipping it.
+	if f.caught_in_air:
+		push_side = 0.0
 	# A side press also needs the finger to really cross the deck toward that rail (board space,
 	# units/s). On screen alone, a finger sliding straight toward the nose can pick up a small
 	# sideways component from the camera angle, and a little roll makes that worse — a feedback
@@ -110,6 +122,13 @@ static func apply(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
 
 	f.press_force = f_n
 	f.drag_force = drag.length()
+
+	# 3. Scoop (shove-it spin) — wheels off the ground, not a catching finger, and only on the
+	# kick that just POPPED (the tail for an ollie / 360 flip, the nose for nollie tricks): the
+	# foot that snapped that kick is the one that scoops it. A front foot flicking off the nose
+	# for a kickflip therefore doesn't add a shove-it.
+	if not grounded and not f.caught_in_air and zone > 0.0 and signf(f.local_pos.z) == popped_end:
+		_scoop_spin(state, f, t)
 
 
 ## Board free to turn about its centre of mass (airborne, or foot between the axles).
@@ -143,3 +162,29 @@ static func _drive_about_axle(state: PhysicsDirectBodyState3D, f: Finger, g: Boa
 	var lever_arm := basis * (f.local_pos - Vector3(0.0, axle.y, axle.x))
 	var v_point := -state.angular_velocity.cross(lever_arm).dot(basis.y)
 	return m_eff * (v_target - v_point) / tau + hold
+
+
+## A foot sweeping SIDEWAYS along a kick scoops it: the kick rises, so instead of slipping the foot
+## catches on it and pushes that end of the board round — a shove-it spin about the vertical.
+##   target spin  ω* = clamp(press_scoop_gain · v_side / |z|,  ±press_scoop_max_spin)   (rad/s)
+##     (v_side = the foot's sideways speed over the deck, z = how far along the board it is:
+##      the spin that moves that end of the board sideways at the foot's speed, × gain)
+##   torque       τ  = I_spin · (ω* − ω_spin) / press_side_response_time   about the vertical
+## Like flips, the spin tops out at press_scoop_max_spin however hard you scoop, so a 360 shove
+## (or the shove in a 360 flip) comes round about once in a normal pop — predictable.
+static func _scoop_spin(state: PhysicsDirectBodyState3D, f: Finger, t: BoardTuning) -> void:
+	var v_side := f.local_vel.x
+	if absf(v_side) < t.press_scoop_min_speed:
+		return
+	# Spin about the VERTICAL: the foot pushes the kick sideways across the ground. (About the
+	# deck's own up axis it would tumble the board whenever it's pitched up steeply.)
+	var axis := Vector3.UP
+	# Foot at +z (tail) moving +x swings the tail right: spin about +Y is negative there
+	# (ω × r: (0, ω, 0) × (0, 0, z) = (ω·z, 0, 0), so ω = v_side / z).
+	var w_target := clampf(t.press_scoop_gain * v_side / maxf(absf(f.local_pos.z), 0.05) * signf(f.local_pos.z),
+			-t.press_scoop_max_spin, t.press_scoop_max_spin)
+	var w_now := state.angular_velocity.dot(axis)
+	if (w_target - w_now) * w_target <= 0.0:
+		return                                   # already spinning at least that fast that way
+	var i_spin := 1.0 / maxf((state.inverse_inertia_tensor * axis).dot(axis), 1e-9)
+	state.apply_torque(axis * i_spin * (w_target - w_now) / t.press_side_response_time)

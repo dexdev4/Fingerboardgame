@@ -6,7 +6,7 @@
 ##
 ##   1. Hold / adjust. The finger has a velocity over the deck (board space, from FingerInput).
 ##      The board rotation that moves the finger's point at that velocity is
-##          ω_target = (r × v_finger) / |r|²         (r = lever from the centre of mass)
+##          ω_target = (r × v_finger) / |r|² · catch_adjust_gain   (r = lever from the CoM)
 ##      and the catch drives the board's spin toward it:
 ##          τ = I · (ω_target − ω) / catch_hold_time
 ##      A still finger → ω_target = 0 → the spin stops (the catch). A dragging finger rotates the
@@ -33,7 +33,9 @@ static func apply(state: PhysicsDirectBodyState3D, catchers: Array[Finger], t: B
 	for f in catchers:
 		var r := basis * f.local_pos - state.center_of_mass
 		var v_finger := basis * Vector3(f.local_vel.x, 0.0, f.local_vel.z).limit_length(t.foot_max_speed)
-		var w_target := r.cross(v_finger) / maxf(r.length_squared(), 1e-4)
+		# × catch_adjust_gain: a foot is a sole, not a point — twisting it on the deck turns the
+		# board more than the single contact point's motion alone would.
+		var w_target := r.cross(v_finger) / maxf(r.length_squared(), 1e-4) * t.catch_adjust_gain
 		torque += inertia * (w_target - state.angular_velocity) * (share / t.catch_hold_time)
 	var up := basis.y
 	if up.dot(Vector3.UP) > t.catch_min_up:

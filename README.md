@@ -77,7 +77,9 @@ like a real ledge 50-50. The debug overlay shows "trucks grinding" and "deck sli
 Tune with `grind_mu` and `slide_mu` in `board_tuning.tres`.
 
 **Flip attempts:** after the pop, flick your front finger up toward the nose **and off the side**
-of the board. Pushing toward a side edge presses that edge (the deck's concave rises at the rails,
+of the board, with a quick, deliberate flick (a slight wobble does nothing). A normal or a hard
+flick both give about one kickflip — the board's roll tops out at `press_side_max_roll`, so it
+doesn't spin out however hard you flick. A soft flick gives a partial flip. Pushing toward a side edge presses that edge (the deck's concave rises at the rails,
 just as the kicks rise at the ends), which rolls the board in the air. On the ground the wheels
 hold it flat, like a real board. If you slide too early, you press the
 board back down before it pops, just like a real ollie.

@@ -34,6 +34,8 @@ var _prev_lin := Vector3.ZERO
 var _prev_ang := Vector3.ZERO
 var _kicks_touching := {}   # part name → bool, last tick
 var _air_time := 0.0
+## Which kick popped most recently: +1 tail, −1 nose, 0 = none since the wheels were last down.
+var _popped_end := 0.0
 
 
 func setup(t: BoardTuning, finger_input: FingerInput) -> void:
@@ -142,7 +144,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	for f in input.feet():
 		# Is the kick at this foot's end already on the ground? Then it can't be pushed further.
 		var end_down := kick_hits.has("tail" if f.local_pos.z > 0.0 else "nose")
-		FootPhysics.apply(state, f, geo, tuning, wheels_down > 0, supported, end_down)
+		FootPhysics.apply(state, f, geo, tuning, wheels_down > 0, supported, end_down, _popped_end)
 	if not supported:
 		CatchPhysics.apply(state, input.catchers(), tuning)
 	PushPhysics.apply(state, input.pushers(), wheels_down, tuning)
@@ -159,6 +161,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		if touching and not _kicks_touching.get(part, false):
 			var hit: Array = kick_hits[part]
 			_pop(state, hit[0] / hit[2], (hit[1] as Vector3).normalized())
+			_popped_end = 1.0 if part == "tail" else -1.0
 		_kicks_touching[part] = touching
 	_track_landing(dt)
 
@@ -203,6 +206,8 @@ func _track_landing(dt: float) -> void:
 	if wheels_down == 0 and _kicks_touching.values().count(true) == 0:
 		_air_time += dt
 		return
+	if wheels_down >= 3:
+		_popped_end = 0.0      # back on the wheels: the next pop decides again
 	if wheels_down > 0 and _air_time >= tuning.landing_min_air_time:
 		landed.emit(maxf(-_prev_lin.y, 0.0))
 	_air_time = 0.0
