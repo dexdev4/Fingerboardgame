@@ -18,7 +18,8 @@ sky = SubResource("Sky_ehus5")
 ambient_light_source = 2
 ambient_light_color = Color(0.66, 0.68, 0.72, 1)
 ambient_light_energy = 0.75
-tonemap_mode = 2
+tonemap_mode = 4
+tonemap_exposure = 1.25
 fog_enabled = true
 fog_light_color = Color(0.75, 0.82, 0.9, 1)
 fog_density = 0.004
@@ -752,7 +753,7 @@ shadow_enabled = true
 shadow_bias = 0.01
 shadow_normal_bias = 0.5
 directional_shadow_mode = 0
-directional_shadow_max_distance = 8.0
+directional_shadow_max_distance = 4.0
 
 [node name="Ground" type="StaticBody3D" parent="."]
 

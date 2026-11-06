@@ -27,6 +27,8 @@ var local_pos := Vector3.ZERO
 var local_vel := Vector3.ZERO
 ## Finger speed on screen toward the end of the board nearest it (screen heights/s).
 var press_speed := 0.0
+## Finger speed on screen toward the side edge (rail) nearest it (screen heights/s).
+var press_speed_side := 0.0
 ## Last forces applied (for the debug overlay), world units.
 var press_force := 0.0
 var drag_force := 0.0

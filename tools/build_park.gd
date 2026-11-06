@@ -163,7 +163,8 @@ func _environment() -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.66, 0.68, 0.72)
 	env.ambient_light_energy = 0.75
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_mode = Environment.TONE_MAPPER_AGX    # natural, film-like highlights
+	env.tonemap_exposure = 1.25                        # AgX is a little dark by default
 	env.fog_enabled = true                 # soft haze so the far scenery sits back
 	env.fog_light_color = Color(0.75, 0.82, 0.9)
 	env.fog_density = 0.004
@@ -180,7 +181,7 @@ func _environment() -> void:
 	sun.shadow_bias = 0.01
 	sun.shadow_normal_bias = 0.5
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-	sun.directional_shadow_max_distance = 8.0
+	sun.directional_shadow_max_distance = 4.0   # tight range = crisp shadow under the board
 	_add(sun)
 
 

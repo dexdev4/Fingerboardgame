@@ -8,12 +8,20 @@
 ##                    Back foot: flick DOWN the screen onto the tail. Front foot: drag UP toward
 ##                    the nose. (Kicks rise toward the tips, so a foot driven toward a tip runs
 ##                    into the kick and pushes it down.)
-##      v_target    = min(press_speed_gain · max(press_speed − deadzone, 0), foot_max_speed) · zone
-##                    (units/s; the cap keeps reactions smooth however hard you flick)
+##      v_target    = min(gain · end_push, foot_max_speed) + min(gain · side_push, side_max_speed)
+##                    (units/s; the caps keep reactions smooth however hard you flick)
+##      end_push    = max(press_speed − deadzone, 0) · zone
 ##      zone        = 0 → 1 from press_zone_start to the kick bend: a foot only converts sliding
 ##                    into pressing where the deck rises under it. In the middle it just slides.
+##      side_push   = max(press_speed_side − deadzone, 0) · zone_side · press_side_gain
+##      zone_side   = 0 → 1 from press_side_zone_start to the rail: the concave rises toward the
+##                    rails, so a finger driven off the side presses that edge. Pressing an edge
+##                    off the centre line makes roll torque — in the air that flips the board;
+##                    on the ground the wheels hold it, like a real board.
 ##      v_point     = how fast that deck point is already moving down
-##      F_drive     = m_eff · (v_target − v_point) / press_response_time + F_hold, clamped ≥ 0
+##      F_drive     = m_eff · (v_target − v_point) / τ + F_hold, clamped ≥ 0
+##                    τ = press_response_time for end presses (smooth), press_side_response_time
+##                    for side flicks (quick: they only touch the rail briefly), blended by share
 ##      F_press     = W·rest_weight (only while grounded) + min(F_drive, W·press_max_weights)
 ##      A resting finger has weight on a board standing on its wheels. In the air a still finger
 ##      rises with the board (like a skater lifting their feet) — it must not keep pushing, or
@@ -45,8 +53,9 @@ class_name FootPhysics
 extends RefCounted
 
 
+## `end_down`: the kick at this foot's end (tail for the back foot) is touching the ground.
 static func apply(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
-		t: BoardTuning, grounded: bool) -> void:
+		t: BoardTuning, grounded: bool, end_down: bool) -> void:
 	f.press_force = 0.0
 	f.drag_force = 0.0
 	if not f.on_board:
@@ -61,14 +70,27 @@ static func apply(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
 	var f_n := weight * t.foot_rest_weight if grounded else 0.0
 	var zone := clampf((absf(f.local_pos.z) - t.mm(t.press_zone_start_mm))
 			/ maxf(g.flat_half - t.mm(t.press_zone_start_mm), 1e-4), 0.0, 1.0)
-	var v_target := minf(t.press_speed_gain * maxf(f.press_speed - t.press_deadzone, 0.0),
-			t.foot_max_speed) * zone
+	var side_start := t.mm(t.press_side_zone_start_mm)
+	var zone_side := clampf((absf(f.local_pos.x) - side_start) / maxf(g.half_width - side_start, 1e-4), 0.0, 1.0)
+	# Once the kick under this foot is on the ground it can't go any lower: the extra press goes
+	# straight into the ground. Without this a foot still "following through" pins the tail
+	# down and levers the board up onto its tail instead of letting it pop off.
+	var push_end := 0.0 if end_down else maxf(f.press_speed - t.press_deadzone, 0.0) * zone
+	var push_side := maxf(f.press_speed_side - t.press_deadzone, 0.0) * zone_side * t.press_side_gain
+	# Each direction has its own speed cap: end presses stay slow and smooth (foot_max_speed),
+	# side presses may go faster (press_side_max_speed) so a flip can come round in the air.
+	var v_end := minf(t.press_speed_gain * push_end, t.foot_max_speed)
+	var v_side := minf(t.press_speed_gain * push_side, t.press_side_max_speed)
+	var v_target := v_end + v_side
+	# Response time blends from the smooth end-press value to the quick side-press value by how
+	# much of the target comes from the side flick.
+	var tau := lerpf(t.press_response_time, t.press_side_response_time, v_side / maxf(v_target, 1e-6))
 	if v_target > 0.0:
 		var drive: float
 		if grounded and absf(f.local_pos.z) > g.axle_z:
-			drive = _drive_about_axle(state, f, g, t, v_target)
+			drive = _drive_about_axle(state, f, g, t, v_target, tau)
 		else:
-			drive = _drive_free(state, offset, up, v_target, t)
+			drive = _drive_free(state, offset, up, v_target, tau)
 		f_n += clampf(drive, 0.0, weight * t.press_max_weights)
 	state.apply_force(-up * f_n, offset)
 
@@ -83,18 +105,18 @@ static func apply(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
 
 ## Board free to turn about its centre of mass (airborne, or foot between the axles).
 static func _drive_free(state: PhysicsDirectBodyState3D, offset: Vector3, up: Vector3,
-		v_target: float, t: BoardTuning) -> float:
+		v_target: float, tau: float) -> float:
 	var r := offset - state.center_of_mass
 	var v_point := -state.angular_velocity.cross(r).dot(up)
 	var rot_term := (state.inverse_inertia_tensor * r.cross(up)).cross(r).dot(up)
 	var m_eff := 1.0 / maxf(rot_term, 1e-6)
-	return m_eff * (v_target - v_point) / t.press_response_time
+	return m_eff * (v_target - v_point) / tau
 
 
 ## Board on its wheels, foot outside the wheelbase: it tips about the nearest axle.
 ## Worked in board-local 2D (z along the board, y up) — the tipping is a pitch rotation.
 static func _drive_about_axle(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
-		t: BoardTuning, v_target: float) -> float:
+		t: BoardTuning, v_target: float, tau: float) -> float:
 	var side := signf(f.local_pos.z)                         # +1 tail, −1 nose
 	var axle := Vector2(side * g.axle_z, g.wheel_y)          # (z, y) of the axle
 	var com := Vector2(0.0, -t.mm(t.com_drop_mm))
@@ -111,4 +133,4 @@ static func _drive_about_axle(state: PhysicsDirectBodyState3D, f: Finger, g: Boa
 	var basis := state.transform.basis
 	var lever_arm := basis * (f.local_pos - Vector3(0.0, axle.y, axle.x))
 	var v_point := -state.angular_velocity.cross(lever_arm).dot(basis.y)
-	return m_eff * (v_target - v_point) / t.press_response_time + hold
+	return m_eff * (v_target - v_point) / tau + hold

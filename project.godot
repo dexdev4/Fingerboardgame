@@ -44,4 +44,5 @@ jolt_physics_3d/limits/max_angular_velocity=300.0
 renderer/rendering_method="mobile"
 renderer/rendering_method.mobile="mobile"
 textures/vram_compression/import_etc2_astc=true
-anti_aliasing/quality/msaa_3d=1
+; 4x MSAA: the deck is thin, so its edges shimmer badly without it.
+anti_aliasing/quality/msaa_3d=2

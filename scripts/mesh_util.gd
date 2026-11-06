@@ -63,6 +63,18 @@ static func prism_yz(outline: PackedVector2Array, half_x: float) -> ArrayMesh:
 	return st.commit()
 
 
+## Outline of a rectangle (half sizes a × b) with corners rounded to radius r, counter-clockwise.
+## Each corner is a quarter circle of `seg` segments centred r in from the corner.
+static func rounded_rect(a: float, b: float, r: float, seg: int = 5) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	var centres := [Vector2(a - r, b - r), Vector2(-a + r, b - r), Vector2(-a + r, -b + r), Vector2(a - r, -b + r)]
+	for c in 4:
+		for k in seg + 1:
+			var ang := PI * 0.5 * (c + float(k) / seg)
+			pts.append(centres[c] + Vector2(cos(ang), sin(ang)) * r)
+	return pts
+
+
 static func material(c: Color, rough: float, metal: float = 0.0) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = c

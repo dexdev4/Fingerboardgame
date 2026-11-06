@@ -95,6 +95,25 @@ Follow these rules in every session. If a request conflicts with them, say so be
   `TruckVisuals`. New classes need one `godot --headless --editor --quit` before headless tests,
   or the test hangs on a parse error.
 
+## M5 decisions (lower gravity, intuitive tricks, max realism)
+
+- gravity_multiplier 0.25; pop gain 3.2 / foot_max_speed 2.8 (~52 mm ollies, 50-tick hang time).
+- **Side presses** (the user asked for trick responsiveness, so flip physics is now allowed): a
+  finger driven toward the nearest RAIL presses that edge (concave rises at the rails, like kicks
+  at the ends). Own gain/cap/response (press_side_*), quick 0.03 s response because a flick only
+  touches the rail briefly. On the ground the wheels hold the board; in the air it rolls.
+  Still no gesture recognition — it's the same press rule applied across the board.
+- **A foot can't press a kick that's already on the ground** (`end_down`): the long smoothing
+  window kept the back foot pressing after the tail struck, pinning the tail and levering the
+  board up onto it instead of popping. This fixed the floaty ollie (tail now leaves the ground).
+- DeckFriction picks contacts by POSITION on the deck (grip side / rail, not the bottom face),
+  not by normal angle — the angle test grabbed the tail during steep pops.
+- Flip attempt currently reaches ~270° of roll (3/4 kickflip) before landing; full flips need
+  more height/levelling. Test checks >90° peak roll and that straight ollies don't roll.
+- Visuals: smooth parabolic kick bends (kick_bend_mm), grip normal-map grains, wood grain,
+  domed silver bolts with Phillips slots, rounded baseplates, "PLAZA 96" wordmark (made-up
+  brand), 4x MSAA, AgX tonemap (exposure 1.25), 4-unit shadow distance for a crisp board shadow.
+
 ## Milestones
 
 - **M1 (done)**: project setup, ground, board, chase camera, finger→foot input, ollie via physics,
@@ -102,7 +121,9 @@ Follow these rules in every session. If a request conflicts with them, say so be
 - **M2 (done)**: outdoor street skatepark, realistic board model, heavier board feel.
 - **M3 (done)**: slower inputs, smoother/slower board reactions, floaty feel.
 - **M4 (done)**: smoother still, high friction for upside-down/side landings, more realistic board.
-- Do **not** build kickflips, steering or other tricks until the user asks for the next milestone.
+- **M5 (done)**: lower gravity, side presses for flip attempts, clean pops, maximum board realism.
+- Steering is still not built — ask before adding it. Flip tricks come only from the general
+  press physics; never add trick-specific code.
 
 ## Testing
 

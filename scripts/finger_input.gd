@@ -151,6 +151,15 @@ func _update_foot(f: Finger, board_xf: Transform3D, size: Vector2, dt: float) ->
 		dir = (p_e - p_c).normalized()
 	f.press_speed = f.screen_vel.dot(dir) / size.y
 
+	# Side press speed: the same idea across the board. The concave rises toward the rails, so
+	# a finger driven toward the nearest side edge presses that edge (flip-trick flicks).
+	var side := 1.0 if lp.x >= 0.0 else -1.0
+	var p_mid = ScreenMath.project(camera, size, board_xf * Vector3(0.0, 0.0, lp.z))
+	var p_rail = ScreenMath.project(camera, size, board_xf * Vector3(side * geo.half_width, 0.0, lp.z))
+	f.press_speed_side = 0.0
+	if p_mid != null and p_rail != null and p_mid.distance_to(p_rail) > 2.0:
+		f.press_speed_side = f.screen_vel.dot((p_rail - p_mid).normalized()) / size.y
+
 
 ## Measure a push finger: its velocity across the ground plane (units/s).
 func _update_pusher(f: Finger, size: Vector2, dt: float) -> void:

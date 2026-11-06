@@ -10,6 +10,10 @@ finger forces acting on a physics board.
 **Milestone 4:** even smoother reactions; a board that lands upside down or on its side grips the
 ground and stops; more realistic board (rounded ply edges, worn grip, riser pads, kingpin and
 bushings, washers and axle nuts, lipped wheels with bearings).
+**Milestone 5:** lower gravity; cleaner pops; flicking a finger off the side of the board presses
+that edge, so flip tricks can come out of the physics; the most realistic board yet (curved
+kicks, bumpy grip, wood grain, Phillips bolts, rounded baseplates, a printed wordmark), 4×
+anti-aliasing and film-like colour.
 
 ## The park
 
@@ -47,7 +51,12 @@ The controls are tuned for **slow, deliberate fingers**: a calm press down the t
 tenth of a second) pops as well as a sharp flick, and flicking faster gives almost nothing extra
 (`foot_max_speed`). Gravity is lowered (`gravity_multiplier`), so the board hangs in the air.
 
-Tip: start the front-foot slide just after the tail snap. If you slide too early, you press the
+Tip: start the front-foot slide just after the tail snap.
+
+**Flip attempts:** after the pop, flick your front finger up toward the nose **and off the side**
+of the board. Pushing toward a side edge presses that edge (the deck's concave rises at the rails,
+just as the kicks rise at the ends), which rolls the board in the air. On the ground the wheels
+hold it flat, like a real board. If you slide too early, you press the
 board back down before it pops, just like a real ollie.
 
 ## How the physics works (short version)

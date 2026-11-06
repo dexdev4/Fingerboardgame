@@ -14,7 +14,8 @@ static func build(body: Node3D, g: BoardGeometry, t: BoardTuning) -> void:
 	var mats := {
 		"metal": MeshUtil.material(t.truck_color, 0.35, 0.5),               # brushed aluminium
 		"steel": MeshUtil.material(Color(0.55, 0.56, 0.6), 0.25, 0.9),
-		"dark": MeshUtil.material(Color(0.1, 0.1, 0.11), 0.45, 0.6),       # bolts, nuts
+		"dark": MeshUtil.material(Color(0.1, 0.1, 0.11), 0.35, 0.7),       # bolts, nuts
+		"slot": MeshUtil.material(Color(0.02, 0.02, 0.02), 0.9),
 		"riser": MeshUtil.material(Color(0.08, 0.08, 0.08), 0.8),
 		"bushing": MeshUtil.material(t.bushing_color, 0.7),
 		"urethane": MeshUtil.material(t.wheel_color, 0.5),
@@ -40,19 +41,46 @@ static func build(body: Node3D, g: BoardGeometry, t: BoardTuning) -> void:
 			body.add_child(w)
 
 
-## Four bolt heads on the grip and their nuts under the baseplate.
+## Four domed bolt heads (with a cross slot) on the grip, and their nuts under the baseplate.
 static func _bolts(body: Node3D, g: BoardGeometry, plate_z: float, mats: Dictionary) -> void:
 	var r := g.wheel_radius
 	var plate_bottom := _plate_bottom(g)
+	var head_r := g.half_width * 0.075
+	var head_h := g.thickness * 0.35
+	var head := _dome_mesh(head_r, head_h)
+	var slot := BoxMesh.new()
+	slot.size = Vector3(head_r * 1.3, head_h * 0.25, head_r * 0.22)
+	var up_axis := Basis(Vector3.BACK, PI * 0.5)          # lathe axis X → world Y
 	for dx in [-0.3, 0.3]:
 		for dz in [-0.22, 0.22]:
 			var x: float = dx * g.half_width
 			var z: float = plate_z + dz * g.half_width
-			var head_h := g.thickness * 0.3
-			_cyl(body, g.half_width * 0.07, head_h, 12, Vector3(x, g.surface_y(z) + head_h * 0.3, z),
-					Basis.IDENTITY, mats.dark)
+			var top := Vector3(x, g.surface_y(z), z)
+			var m := MeshInstance3D.new()
+			m.mesh = head
+			m.material_override = mats.steel     # silver heads, so the dark cross slot shows
+			m.transform = Transform3D(up_axis, top)
+			body.add_child(m)
+			for turn in [0.0, PI * 0.5]:                      # Phillips cross
+				var s := MeshInstance3D.new()
+				s.mesh = slot
+				s.material_override = mats.slot
+				s.transform = Transform3D(Basis(Vector3.UP, turn), top + Vector3(0, head_h * 0.9, 0))
+				body.add_child(s)
 			_cyl(body, g.half_width * 0.065, r * 0.18, 6, Vector3(x, plate_bottom - r * 0.09, z),
 					Basis.IDENTITY, mats.dark)
+
+
+## Low dome (bolt head): profile (height along the axis, radius), flat rim then a curved top.
+static func _dome_mesh(radius: float, height: float) -> ArrayMesh:
+	var profile := PackedVector2Array([Vector2(0.0, 0.0), Vector2(0.0, radius)])
+	for k in 7:
+		var a := PI * 0.5 * k / 6.0
+		profile.append(Vector2(height * 0.3 + height * 0.7 * sin(a), radius * cos(a)))
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	MeshUtil.lathe(profile, 14, st)
+	return st.commit()
 
 
 static func _plate_bottom(g: BoardGeometry) -> float:
@@ -68,7 +96,12 @@ static func _truck(body: Node3D, g: BoardGeometry, side: float, axle_z: float, p
 	var plate_h := r * 0.25
 	var foot := Vector3(g.half_width * 1.0, 0.0, g.half_width * 0.75)   # baseplate footprint
 	_box(body, Vector3(foot.x * 1.04, riser_h, foot.z * 1.04), Vector3(0, under - riser_h * 0.5, plate_z), mats.riser)
-	_box(body, Vector3(foot.x, plate_h, foot.z), Vector3(0, under - riser_h - plate_h * 0.5, plate_z), mats.metal)
+	# Baseplate with rounded corners: a rounded-rectangle outline extruded through its thickness.
+	var plate := MeshInstance3D.new()
+	plate.mesh = MeshUtil.prism_yz(MeshUtil.rounded_rect(foot.x * 0.5, foot.z * 0.5, foot.z * 0.18), plate_h * 0.5)
+	plate.material_override = mats.metal
+	plate.transform = Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0, under - riser_h - plate_h * 0.5, plate_z))
+	body.add_child(plate)
 	var plate_bottom := _plate_bottom(g)
 
 	# Kingpin stack: tilted so its bottom points inboard, bushings around it, nut at the bottom.

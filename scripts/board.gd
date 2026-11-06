@@ -126,10 +126,12 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	# --- Forces. ---
 	input.physics_update(state.transform, state.get_space_state(), dt)
 	for f in input.feet():
-		FootPhysics.apply(state, f, geo, tuning, wheels_down > 0)
+		# Is the kick at this foot's end already on the ground? Then it can't be pushed further.
+		var end_down := kick_hits.has("tail" if f.local_pos.z > 0.0 else "nose")
+		FootPhysics.apply(state, f, geo, tuning, wheels_down > 0, end_down)
 	PushPhysics.apply(state, input.pushers(), wheels_down, tuning)
 	WheelPhysics.apply(state, wheel_contacts, tuning)
-	DeckFriction.apply(state, deck_contacts, tuning)
+	DeckFriction.apply(state, deck_contacts, geo, tuning)
 
 	# --- Events. ---
 	for part in ["tail", "nose"]:

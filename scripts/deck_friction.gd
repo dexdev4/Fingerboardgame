@@ -2,11 +2,13 @@
 ## upside down or on its side. The board's collision material is frictionless (so wheels can be
 ## modelled separately), so without this a bailed board would slide and spin like on ice.
 ##
-## Which contacts get friction: those where the board's TOP or SIDE faces the ground, judged by
-## the contact normal n (pointing from the ground into the board) against the deck's up axis:
-##     n · up < side_threshold   →  grip / edge contact  →  friction
-##     n · up ≥ side_threshold   →  underside contact (e.g. the tail striking during a pop) → none
-## So ollies (tail underside on the ground) behave exactly as before.
+## Which contacts get friction: those ON the grip-tape side or the edges, judged by where the
+## contact point sits on the deck (board-local):
+##     y above the deck's mid-plane at that z (grip side)   →  friction
+##     |x| out at the rail (edge)                           →  friction
+##     anything else (underside, e.g. the tail striking during a pop)  →  none
+## A position test, not a normal-angle test: during a steep pop the tail's underside meets the
+## ground at a shallow angle and must still slide freely.
 ##
 ## Coulomb friction per contact, with the normal force approximated by the board's weight shared
 ## between the touching contacts (the board is lying on them):
@@ -17,16 +19,22 @@
 class_name DeckFriction
 extends RefCounted
 
-## Above this n·up the contact is on the underside (cos 70°: anything flatter is a side/top).
-const SIDE_THRESHOLD := 0.34
+## A contact this close to the rail (fraction of the half width) counts as the edge.
+const EDGE_FRACTION := 0.85
 
 
 ## `contacts`: [offset from body origin (global orientation), normal] pairs for non-wheel contacts.
-static func apply(state: PhysicsDirectBodyState3D, contacts: Array, t: BoardTuning) -> void:
-	var up := state.transform.basis.y
+static func apply(state: PhysicsDirectBodyState3D, contacts: Array, g: BoardGeometry, t: BoardTuning) -> void:
+	var to_local := state.transform.basis.inverse()
 	var touching: Array = []
 	for c in contacts:
-		if (c[1] as Vector3).dot(up) < SIDE_THRESHOLD:
+		var p: Vector3 = to_local * (c[0] as Vector3)
+		var mid := g.surface_y(p.z) - g.thickness * 0.5     # deck mid-plane height at this z
+		var on_grip := p.y > mid
+		# Edge = out at the rail AND not on the bottom face (a kick's bottom corners are also
+		# at the rail, and they must slide freely when the tail strikes).
+		var on_edge := absf(p.x) > g.half_width * EDGE_FRACTION and p.y > mid - g.thickness * 0.25
+		if on_grip or on_edge:
 			touching.append(c)
 	if touching.is_empty():
 		return

@@ -21,6 +21,10 @@ var results := {}
 ## it depends only on the simulated position).
 var stairs_trigger_z := INF
 var upside_start := Vector3.ZERO
+## Total roll (rotation about the board's long axis), degrees, accumulated every tick.
+var roll_total := 0.0
+var straight_roll := 0.0
+var roll_peak := 0.0      # largest |roll| reached during the scenario, degrees
 ## Roll-in speed for the stairs scenario (units/s; 10 units/s = 1 m/s real).
 const STAIRS_SPEED := 5.0
 ## Finger timing (physics ticks at 120/s). The controls are tuned for slow, deliberate fingers:
@@ -48,6 +52,8 @@ func _start_scenario() -> void:
 	holder.add_child(main)
 	board = null   # fetched once main's _ready has run
 	tick = 0
+	roll_total = 0.0
+	roll_peak = 0.0
 	log_rows.clear()
 	schedule.clear()
 	match scenario:
@@ -57,6 +63,7 @@ func _start_scenario() -> void:
 		3: _plan_ollie(true)   # repeat of 0 — must match exactly
 		4: _plan_stairs()
 		5: _plan_upside_down()
+		6: _plan_flip_attempt()
 		_:
 			_finish()
 
@@ -79,6 +86,8 @@ func _physics_process(_dt: float) -> bool:
 		stairs_trigger_z = INF
 		_ollie_now(tick, true)
 	var a := board.angles_deg()
+	roll_total += rad_to_deg(board.angular_velocity.dot(board.global_transform.basis.z)) / Engine.physics_ticks_per_second
+	roll_peak = maxf(roll_peak, absf(roll_total))
 	if OS.get_environment("TRACE") == str(scenario) and tick >= SETTLE and tick < SETTLE + 200:
 		var fs := ""
 		for f: Finger in input.fingers.values():
@@ -128,8 +137,15 @@ func _plan_ollie(slide: bool) -> void:
 	schedule.append([SETTLE, func(): _ollie_now(SETTLE, slide)])
 
 
+## Pop, then slide the front finger up AND off the side of the nose — a kickflip-style flick.
+func _plan_flip_attempt() -> void:
+	# The flick comes as the board rises off the tail (later than an ollie's slide).
+	schedule.append([SETTLE, func(): _ollie_now(SETTLE, true, Vector2(0.18, -0.26), SLIDE_START + 4)])
+
+
 ## Both fingers land now (tail + front bolts), then: tail flick, optional front slide, lift.
-func _ollie_now(at: int, slide: bool) -> void:
+## `slide_dir` = front finger motion as a fraction of the screen height (default: straight up).
+func _ollie_now(at: int, slide: bool, slide_dir := Vector2(0.0, -0.22), slide_start := SLIDE_START) -> void:
 	var h := cam.get_viewport().get_visible_rect().size.y
 	var tail := _screen_of_local(Vector3(0, 0, board.geo.half_length * 0.85))
 	var front := _screen_of_local(Vector3(0, 0, -board.geo.axle_z))   # front bolts
@@ -139,8 +155,8 @@ func _ollie_now(at: int, slide: bool) -> void:
 	_plan_move(0, at + 2, tail, Vector2(0, h * 0.12), FLICK_TICKS)
 	if slide:
 		# Front foot: drag up toward the nose, starting just after the pop.
-		_plan_move(1, at + SLIDE_START, front, Vector2(0, -h * 0.22), SLIDE_TICKS)
-	schedule.append([at + SLIDE_START + SLIDE_TICKS + 10, func():
+		_plan_move(1, at + slide_start, front, slide_dir * h, SLIDE_TICKS)
+	schedule.append([at + slide_start + SLIDE_TICKS + 10, func():
 		_touch(0, Vector2.ZERO, false)
 		_touch(1, Vector2.ZERO, false)])
 
@@ -181,7 +197,7 @@ func _plan_push() -> void:
 
 func _report() -> void:
 	var names := ["ollie + front slide", "ollie, no front slide", "push", "ollie + slide (repeat)",
-			"ollie down the stairs", "upside-down landing"]
+			"ollie down the stairs", "upside-down landing", "flip attempt (front finger off the side)"]
 	var max_h := 0.0
 	var max_pitch := 0.0
 	var max_speed := 0.0
@@ -200,8 +216,10 @@ func _report() -> void:
 		print("  t%3d  h %6.1f mm  pitch %6.1f°  v %6.1f cm/s  wheels %d  spin %5.1f rad/s" % r)
 	_feel_metrics()
 	results[scenario] = log_rows.duplicate(true)
+	print("  roll: peak %.0f°, net %.0f°" % [roll_peak, roll_total])
 	match scenario:
 		0:
+			straight_roll = roll_peak
 			_expect(max_h > 8.0, "ollie should leave the ground clearly (>8 mm)")
 			_expect(absf(last[2]) < 10.0 and last[4] >= 3, "with front slide the board should land flat on its wheels")
 		1:
@@ -214,6 +232,9 @@ func _report() -> void:
 			_expect(max_speed > 60.0, "three swipes should reach stair-clearing speed (>60 cm/s)")
 		3:
 			_expect(str(results[0]) == str(results[3]), "same input must give the same result")
+		6:
+			_expect(roll_peak > 90.0, "flicking off the side in the air rolls the board (>90°)")
+			_expect(absf(straight_roll) < 30.0, "a straight ollie barely rolls (<30°)")
 		5:
 			var slide := Vector2(board.global_position.x - upside_start.x, board.global_position.z - upside_start.z).length()
 			var stop_tick := -1

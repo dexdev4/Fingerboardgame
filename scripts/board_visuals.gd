@@ -5,7 +5,7 @@
 class_name BoardVisuals
 extends RefCounted
 
-const ALONG_STEPS := 64     # deck profile resolution, nose → tail
+const ALONG_STEPS := 160    # deck profile resolution, nose → tail (fine enough for the bends)
 const ACROSS_STEPS := 10    # deck resolution across the width (for the concave)
 const EDGE_STEPS := 6       # segments in the rounded edge (half circle across the thickness)
 
@@ -15,6 +15,7 @@ static func build(body: Node3D, g: BoardGeometry, t: BoardTuning) -> void:
 	deck.name = "DeckMesh"
 	deck.mesh = _deck_mesh(g, t)
 	body.add_child(deck)
+	_add_wordmark(body, g, t)
 
 	TruckVisuals.build(body, g, t)
 
@@ -24,22 +25,30 @@ static func build(body: Node3D, g: BoardGeometry, t: BoardTuning) -> void:
 ## The side profile (flat middle + two kicks) swept across the width. Each across-the-width
 ## position x is lifted by the concave: c(x) = concave · (x / half_width)², so the rails sit
 ## higher than the centre line, like a real deck.
+##
+## Real kicks curve up out of the flat; they don't fold at a sharp crease. The visual profile
+## blends the flat and the kick with a parabola over ±w around the bend (d = |z| − flat_half):
+##     d < −w : y = 0
+##     |d| ≤ w: y = tan(a)·(d + w)² / (4w),   slope = tan(a)·(d + w) / (2w)
+##     d > w  : y = d·tan(a),                 slope = tan(a)
+## Value and slope match at both ends of the blend, so the bend is smooth (C¹). The collision
+## boxes keep the sharp bend — the difference is a fraction of a millimetre.
 static func _deck_mesh(g: BoardGeometry, t: BoardTuning) -> ArrayMesh:
 	var grip := SurfaceTool.new()
 	var wood := SurfaceTool.new()
 	grip.begin(Mesh.PRIMITIVE_TRIANGLES)
 	wood.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var concave := t.mm(t.concave_mm)
-	var span := g.flat_half + g.kick_length          # half the profile length, along the deck
 	var h := g.thickness * 0.5
+	var bend := t.mm(t.kick_bend_mm)
 	var prev: Array = []
 	for i in ALONG_STEPS + 1:
 		var u := float(i) / ALONG_STEPS              # 0 nose … 1 tail
-		var s := lerpf(-span, span, u)
-		var d := maxf(absf(s) - g.flat_half, 0.0)    # distance travelled along a kick
-		var z := signf(s) * (minf(absf(s), g.flat_half) + d * cos(g.kick_angle))
-		var centre := Vector3(0.0, d * sin(g.kick_angle), z)
-		var n := g.surface_normal(z)
+		var z := lerpf(-g.half_length, g.half_length, u)
+		var prof := _profile(g, z, bend)             # [height, slope]
+		var centre := Vector3(0.0, prof[0], z)
+		# Surface normal from the slope: the kick rises outward, so the normal leans inward.
+		var n := Vector3(0.0, 1.0, -signf(z) * prof[1]).normalized()
 		var w := _half_width_at(g, z)
 		var row := []                                # [top, bottom, top normal] per column
 		for j in ACROSS_STEPS + 1:
@@ -77,6 +86,9 @@ static func _deck_mesh(g: BoardGeometry, t: BoardTuning) -> ArrayMesh:
 							[p0[k][1], p0[k + 1][1], q0[k + 1][1], q0[k][1]],
 							[Vector2(u0, v0), Vector2(u0, v1), Vector2(u, v1), Vector2(u, v0)])
 		prev = row
+	# Tangents let the shaders use normal maps (sandpaper bumps, wood grain).
+	grip.generate_tangents()
+	wood.generate_tangents()
 	var mesh := grip.commit()
 	mesh.surface_set_material(0, MeshUtil.shader_material("res://shaders/grip_tape.gdshader",
 			{"grip_color": t.grip_color}))
@@ -84,6 +96,38 @@ static func _deck_mesh(g: BoardGeometry, t: BoardTuning) -> ArrayMesh:
 	mesh.surface_set_material(1, MeshUtil.shader_material("res://shaders/deck_wood.gdshader",
 			{"graphic_a": t.graphic_color_a, "graphic_b": t.graphic_color_b}))
 	return mesh
+
+
+## Deck mid-plane height and slope (dy/dz, outward) at z: flat middle, parabolic bend, straight kick.
+static func _profile(g: BoardGeometry, z: float, w: float) -> Array:
+	var tan_a := tan(g.kick_angle)
+	var d := absf(z) - g.flat_half
+	if d <= -w:
+		return [0.0, 0.0]
+	if d >= w:
+		return [d * tan_a, tan_a]
+	return [tan_a * (d + w) * (d + w) / (4.0 * w), tan_a * (d + w) / (2.0 * w)]
+
+
+## A printed wordmark on the bottom graphic, readable when the board is upside down (like a real
+## deck's graphic). Made-up name — not a real brand. Visual only.
+static func _add_wordmark(body: Node3D, g: BoardGeometry, t: BoardTuning) -> void:
+	var text := TextMesh.new()
+	text.text = t.deck_wordmark
+	text.font_size = 64
+	text.pixel_size = g.half_width * 0.0062     # sized to fit between the trucks
+	text.depth = 0.0
+	var m := StandardMaterial3D.new()
+	m.albedo_color = t.wordmark_color
+	m.roughness = 0.5
+	text.material = m
+	var mi := MeshInstance3D.new()
+	mi.name = "Wordmark"
+	mi.mesh = text
+	# TextMesh faces +Z; lay it flat on the underside (facing down), running along the board.
+	var lay := Basis(Vector3.UP, PI * 0.5) * Basis(Vector3.RIGHT, PI * 0.5)
+	mi.transform = Transform3D(lay, Vector3(0.0, -g.thickness * 0.5 - 0.0004, 0.0))
+	body.add_child(mi)
 
 
 ## Points [position, normal] round one edge of the deck, bottom (θ = 0) to top (θ = π):

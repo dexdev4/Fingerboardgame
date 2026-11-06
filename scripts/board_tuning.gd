@@ -11,7 +11,7 @@ extends Resource
 @export var world_scale: float = 10.0
 ## 1.0 = real gravity (9.81 m/s² scaled to world units). Lower = floatier: longer hang time,
 ## slower falls. 0.3 gives the slow, floaty feel (M3); raise toward 1.0 for snappy realism.
-@export var gravity_multiplier: float = 0.3
+@export var gravity_multiplier: float = 0.25
 ## Fixed physics rate. Higher = more stable contacts, more CPU. Keep a multiple of 60.
 @export var physics_ticks_per_second: int = 120
 
@@ -35,7 +35,13 @@ extends Resource
 ## Deck concave: how much higher the rails (edges) sit than the centre line (mm). Visual.
 @export var concave_mm: float = 1.0
 
+## Visual bend into each kick (mm either side of the bend). Real decks curve; 0 = sharp crease.
+@export var kick_bend_mm: float = 5.0
+
 @export_group("Board look")
+## Wordmark printed on the bottom graphic (made-up brand) and its colour.
+@export var deck_wordmark: String = "PLAZA 96"
+@export var wordmark_color: Color = Color(0.08, 0.08, 0.1)
 @export var grip_color: Color = Color(0.07, 0.07, 0.075)
 ## Bottom graphic: stripes/ends colour and the logo/middle colour.
 @export var graphic_color_a: Color = Color(0.85, 0.2, 0.15)
@@ -88,7 +94,7 @@ extends Resource
 ## How fast a pressing finger drives its point of the deck down (units/s) per unit of
 ## press speed (screen heights/s). Press speed = finger speed on screen toward the end of the
 ## board nearest that finger. THE main "pop strength" knob.
-@export var press_speed_gain: float = 2.8
+@export var press_speed_gain: float = 3.2
 ## Press only works on the outer part of the board, where the kicks rise: it fades in from
 ## this distance from the centre (mm) to full strength at the kick bend. Default sits just
 ## inside the bolts, so a front foot slides freely until it reaches the front bolts.
@@ -96,7 +102,21 @@ extends Resource
 ## Top speed a foot can move the deck at (units/s) — both pressing it down and dragging it
 ## along the grip. Above this, flicking harder does nothing more: slow, deliberate fingers
 ## get the full effect and the board's reactions stay smooth however fast you flick.
-@export var foot_max_speed: float = 2.5
+@export var foot_max_speed: float = 2.8
+## Side presses: a finger driven toward the nearest RAIL (side edge) presses that edge, because
+## the concave rises toward the rails just like the kicks rise toward the ends. Strength relative
+## to end presses (0 = off). On the ground the wheels stop the board rolling; in the air it rolls
+## (flip tricks: pop, then flick the front finger off the side).
+@export var press_side_gain: float = 10.0
+## Top speed a side press can drive the rail at (units/s). Separate from foot_max_speed so
+## flips can come round in one hang time while ollies keep the slow, smooth feel.
+@export var press_side_max_speed: float = 12.0
+## Response time for side presses (s). A flick off the side touches the rail only briefly, so
+## it needs a quicker foot than the smooth ollie press (press_response_time). Keep ≥ 2 ticks.
+@export var press_side_response_time: float = 0.03
+## Side presses fade in from this distance from the centre line (mm) to full at the rail.
+## The deck is 28 mm wide, so the rail is at 14 mm.
+@export var press_side_zone_start_mm: float = 3.0
 ## Finger speeds below this (screen heights/s) don't press — filters jitter.
 @export var press_deadzone: float = 0.15
 ## How quickly a foot gets its point of the deck up to speed (s). Smaller = snappier, harder
