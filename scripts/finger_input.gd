@@ -95,13 +95,23 @@ func _assign_role(f: Finger, board_xf: Transform3D, space: PhysicsDirectSpaceSta
 		local_z = (board_xf.affine_inverse() * hit.position).z
 	else:
 		# The board is thin and often seen edge-on, so also accept touches that land on the
-		# deck plane within the catch margin.
+		# deck plane NEAR the board — a forgiving landing margin (foot_assign_margin_mm), wider
+		# than the margin for staying on, so placing a finger is easy but flicks still leave.
 		var lp = _deck_point(r, board_xf)
-		if lp != null and _within_deck(lp):
+		var m := tuning.mm(tuning.foot_assign_margin_mm)
+		if lp != null and absf(lp.x) <= geo.half_width + m and absf(lp.z) <= geo.half_length + m:
 			local_z = lp.z
 	if local_z != null:
 		var want := Finger.Role.BACK_FOOT if local_z > tuning.mm(tuning.foot_split_mm) else Finger.Role.FRONT_FOOT
-		f.role = Finger.Role.IGNORED if _role_taken(want) else want
+		var other := Finger.Role.FRONT_FOOT if want == Finger.Role.BACK_FOOT else Finger.Role.BACK_FOOT
+		# You only have two feet: if the half you touched already has a foot, this finger is the
+		# other foot (e.g. a second finger landing a little behind the middle is still the front).
+		if not _role_taken(want):
+			f.role = want
+		elif not _role_taken(other):
+			f.role = other
+		else:
+			f.role = Finger.Role.IGNORED
 		return
 	# Anything else the ray hits is ground (floor, steps, ledges...). If it hits nothing, use
 	# the level the board is standing on.

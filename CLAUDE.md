@@ -183,6 +183,29 @@ Follow these rules in every session. If a request conflicts with them, say so be
 - Test spin metric is about the world vertical; heading for catch-adjust is read at touchdown
   (after landing, a finger off-centre steers the board).
 
+## M10 decisions (controllable ollies, easier second finger, bigger park)
+
+- **Phase-dependent press zone**: on the wheels a foot presses only from press_zone_start_mm
+  (15 mm — front foot stays light so the tail snaps); in the air from press_zone_start_air_mm
+  (6 mm) — the front finger levels the board as soon as it slides (as the board tips up toward
+  the camera, a finger on the bolts reads nearer the middle). Ollie with slide: 64° → 52° peak.
+- **Centre-line press**: nose/tail presses and resting weight act on the board's centre line
+  at the finger's z (a kick rises across the whole width) — a slightly off-centre front finger
+  no longer rolls the board (crooked slide: 122° → 8°). Only while the finger is FLICKING
+  (side push > 0) does the press act at the finger itself (M9 flip behaviour, unchanged).
+  Splitting the force into centre/finger shares, a headroom-limited cap, and a pure-torque flick
+  were all tried this round and made flips erratic — don't repeat without a new idea.
+- The popping foot doesn't flick (push_side = 0 on the kick that last popped).
+- Second finger: if the half you touch already has a foot, the touch becomes the other foot;
+  new touches count within foot_assign_margin_mm (10 mm) of the deck (staying-on margin stays
+  small so flicks still leave the board).
+- Park: `tools/expand_park.gd` (additive, idempotent): plaza extension (warmer concrete, 1.5 u
+  slabs), raised lip, 5-stair + handrail + hubba with a bank up, quarter pipe (trimesh; prism
+  caps fan from the BACK-BOTTOM corner — the only point that sees the whole curved solid),
+  kinked rail, manual pads, low bank, planters, glowing lamps, benches.
+- KNOWN GAP: the 360 flip — the back-foot scoop's grip drag fights the front flick; both the
+  roll and spin checks are reported, not asserted.
+
 ## Milestones
 
 - **M1 (done)**: project setup, ground, board, chase camera, finger→foot input, ollie via physics,
@@ -196,6 +219,8 @@ Follow these rules in every session. If a request conflicts with them, say so be
 - **M8 (done)**: True Skate-style feel, catching/adjusting in the air, steering, detailed map.
 - **M9 (done, partial)**: predictable kickflips (more input needed, one flip however hard).
   360 flip: flip works, the shove-it spin is a known gap.
+- **M10 (done, partial)**: flatter, more controllable ollies; easier second-finger placement;
+  bigger, more polished park. 360 flip still a known gap.
 - Flip tricks, catches and turns come only from the general finger physics; never add
   trick-specific code.
 

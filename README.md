@@ -14,6 +14,10 @@ bushings, washers and axle nuts, lipped wheels with bearings).
 that edge, so flip tricks can come out of the physics; the most realistic board yet (curved
 kicks, bumpy grip, wood grain, Phillips bolts, rounded baseplates, a printed wordmark), 4×
 anti-aliasing and film-like colour.
+**Milestone 10:** flatter, more controllable ollies (the front finger levels the board in the
+air; a crooked slide no longer rolls it); the second finger is easier to place (it always
+becomes the other foot, and touches just off the board count); a bigger plaza with a 5-stair
+(handrail + hubba), a quarter pipe, a kinked rail, manual pads, a bank, planters and lamps.
 **Milestone 8:** game feel closer to True Skate / Touchgrind (snappier, rewards sharp flicks,
 carries speed); **steering** (lean the trucks); **catching** the board in the air and adjusting
 it; a much more detailed plaza (hubba, funbox, long ledge, red curb, bank, picnic table, city
@@ -155,6 +159,7 @@ scenes/skatepark.tscn     the park (sky, sun, ground, obstacles, scenery, Spawn 
 tools/build_park.gd       generates skatepark.tscn (overwrites it — careful)
 tools/add_grind_spots.gd  adds the in-line grind spots + slickness tags (keeps your edits)
 tools/add_plaza_details.gd adds the hubba, funbox, ledges, curb, furniture, city (keeps edits)
+tools/expand_park.gd      plaza extension, 5-stair, quarter pipe, kinked rail, polish (keeps edits)
 tuning/board_tuning.tres  all tuning values (script: scripts/board_tuning.gd)
 scripts/
   main.gd                 wires everything from the tuning resource

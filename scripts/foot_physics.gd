@@ -72,8 +72,12 @@ static func apply(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
 
 	# 1. Press.
 	var f_n := weight * t.foot_rest_weight if supported else 0.0
-	var zone := clampf((absf(f.local_pos.z) - t.mm(t.press_zone_start_mm))
-			/ maxf(g.flat_half - t.mm(t.press_zone_start_mm), 1e-4), 0.0, 1.0)
+	# Press zone: on the wheels a foot only presses out on the kicks (a front foot crossing the
+	# middle stays light, so the tail can snap). In the air the zone starts much nearer the
+	# middle: the front foot levels the nose as soon as it slides — and as the board tips up
+	# toward the camera, a finger placed on the bolts reads closer to the middle of the deck.
+	var zone_start := t.mm(t.press_zone_start_mm if grounded else t.press_zone_start_air_mm)
+	var zone := clampf((absf(f.local_pos.z) - zone_start) / maxf(g.flat_half - zone_start, 1e-4), 0.0, 1.0)
 	var side_start := t.mm(t.press_side_zone_start_mm)
 	var zone_side := clampf((absf(f.local_pos.x) - side_start) / maxf(g.half_width - side_start, 1e-4), 0.0, 1.0)
 	# Once the kick under this foot is on the ground it can't go any lower: the extra press goes
@@ -91,6 +95,11 @@ static func apply(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
 	# A finger that caught the board in the air is catching/adjusting it (CatchPhysics), not
 	# flicking: dragging it sideways turns the board under it instead of flipping it.
 	if f.caught_in_air:
+		push_side = 0.0
+	# The foot on the kick that just popped SCOOPS (shove-it, _scoop_spin); only the other foot
+	# flicks. A back foot sweeping sideways along the tail in a 360 flip mustn't flick the board
+	# the opposite way to the front foot.
+	if popped_end != 0.0 and signf(f.local_pos.z) == popped_end:
 		push_side = 0.0
 	# A side press also needs the finger to really cross the deck toward that rail (board space,
 	# units/s). On screen alone, a finger sliding straight toward the nose can pick up a small
@@ -113,7 +122,15 @@ static func apply(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
 		else:
 			drive = _drive_free(state, offset, up, v_target, tau)
 		f_n += clampf(drive, 0.0, weight * t.press_max_weights)
-	state.apply_force(-up * f_n, offset)
+	# Where the press acts:
+	#  - flicking off the side (v_side > 0): at the finger, out toward the rail — that off-centre
+	#    push is what rolls the board into a flip (deliberate, capped by press_side_max_roll);
+	#  - otherwise (pressing the kick/nose, resting weight): on the board's CENTRE LINE at the
+	#    finger's position along it. A kick rises across the whole width under the foot, so
+	#    pressing it tips the board nose/tail without rolling it — a slightly off-centre front
+	#    finger no longer rolls the board in the air.
+	var press_point := offset if v_side > 0.0 else basis * Vector3(0.0, f.local_pos.y, f.local_pos.z)
+	state.apply_force(-up * f_n, press_point)
 
 	# 2. Drag (grip friction), in the plane of the deck.
 	var slip := basis * Vector3(f.local_vel.x, 0.0, f.local_vel.z).limit_length(t.foot_max_speed)

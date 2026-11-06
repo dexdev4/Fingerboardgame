@@ -116,6 +116,9 @@ extends Resource
 @export_group("Feet (fingers on the board)")
 ## Shifts the back/front split along the board (mm, + toward the tail).
 @export var foot_split_mm: float = 0.0
+## A new touch counts as landing on the board this far outside the deck outline (mm). Generous,
+## because the board is thin on screen — placing a finger should be easy.
+@export var foot_assign_margin_mm: float = 10.0
 ## A finger counts as "on the board" this far past the deck's side edges (mm).
 @export var foot_catch_margin_mm: float = 3.0
 ## ...and this far past the nose/tail tips (mm). Generous, because flicking down on the tail
@@ -133,6 +136,10 @@ extends Resource
 ## this distance from the centre (mm) to full strength at the kick bend. Default sits just
 ## inside the bolts, so a front foot slides freely until it reaches the front bolts.
 @export var press_zone_start_mm: float = 15.0
+## The same, while the wheels are off the ground (mm). Much nearer the middle, so the front
+## finger levels the board in the air without having to reach the nose — flatter, more
+## controllable ollies.
+@export var press_zone_start_air_mm: float = 6.0
 ## Top speed a foot can move the deck at (units/s) — both pressing it down and dragging it
 ## along the grip. Above this, flicking harder does nothing more: slow, deliberate fingers
 ## get the full effect and the board's reactions stay smooth however fast you flick.
