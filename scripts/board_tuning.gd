@@ -116,6 +116,10 @@ extends Resource
 @export_group("Feet (fingers on the board)")
 ## Shifts the back/front split along the board (mm, + toward the tail).
 @export var foot_split_mm: float = 0.0
+## Flick input sensitivity (pause menu): multiplies every press speed read from a finger (end
+## and side presses). 2 = a flick counts as twice as fast (easier pops/flips, deadzones feel
+## half as wide); 0.5 = you need twice the finger speed. Caps (foot_max_speed etc.) are unchanged.
+@export var flick_sensitivity: float = 1.0
 ## A new touch counts as landing on the board this far outside the deck outline (mm). Generous,
 ## because the board is thin on screen — placing a finger should be easy.
 @export var foot_assign_margin_mm: float = 10.0
@@ -216,6 +220,38 @@ extends Resource
 @export var camera_follow: float = 5.0
 ## How quickly the camera swings round to the board's heading (1/s).
 @export var camera_turn_follow: float = 2.5
+## Swings the camera round the board (degrees about the vertical): 0 = straight behind,
+## + = round to the board's right side, − = left side.
+@export var camera_orbit_deg: float = 0.0
+## Raises (+) or lowers (−) the point the camera aims at (world units, from the board), which
+## tilts the view up toward the run ahead or down onto the board.
+@export var camera_aim_height: float = 0.0
+
+@export_group("Pause menu (slider ranges)")
+## Game speed (time manipulator): 1 = real time, 0.5 = half-speed slow motion. Every physics
+## tick stays 1/120 s; only how many ticks run per real second changes, so tricks are identical.
+@export var menu_game_speed_min: float = 0.1
+@export var menu_game_speed_max: float = 1.5
+## Board flip speed: multiplier on the flip/shove spin ceilings (press_side_max_roll,
+## press_side_max_speed, press_scoop_max_spin).
+@export var menu_flip_speed_min: float = 0.5
+@export var menu_flip_speed_max: float = 1.6
+## Flick input sensitivity (flick_sensitivity).
+@export var menu_flick_sensitivity_min: float = 0.5
+@export var menu_flick_sensitivity_max: float = 2.0
+## Gravity (gravity_multiplier, × real gravity).
+@export var menu_gravity_min: float = 0.1
+@export var menu_gravity_max: float = 1.0
+## Camera position and angle ranges (world units / degrees).
+@export var menu_camera_distance_min: float = 0.5
+@export var menu_camera_distance_max: float = 2.5
+@export var menu_camera_height_min: float = 0.2
+@export var menu_camera_height_max: float = 2.0
+@export var menu_camera_orbit_max_deg: float = 90.0
+@export var menu_camera_aim_min: float = -0.5
+@export var menu_camera_aim_max: float = 0.8
+@export var menu_camera_fov_min: float = 35.0
+@export var menu_camera_fov_max: float = 85.0
 
 @export_group("Haptics")
 @export var haptics_enabled: bool = true

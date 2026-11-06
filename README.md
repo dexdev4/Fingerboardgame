@@ -21,6 +21,9 @@ becomes the other foot, and touches just off the board count); a bigger plaza wi
 **Milestone 11:** the scoop: sweeping the back foot sideways along the tail as you pop spins the
 board round (shove-it), and it no longer cancels a front-foot flick. The 360 flip's flip half is
 still being worked on (it comes down on its side).
+**Milestone 12:** pause menu (II PAUSE, the phone's back button, or Esc) with settings: game
+speed (slow motion), board flip speed, flick sensitivity, gravity, and camera distance, height,
+orbit, tilt and zoom. Settings are saved on the phone.
 **Milestone 8:** game feel closer to True Skate / Touchgrind (snappier, rewards sharp flicks,
 carries speed); **steering** (lean the trucks); **catching** the board in the air and adjusting
 it; a much more detailed plaza (hubba, funbox, long ledge, red curb, bank, picnic table, city
@@ -62,6 +65,7 @@ scratch and **overwrites edits made in the editor**:
 | Front foot: **drag up toward the nose** after the pop | Catches the rising nose and levels the board. No slide means the board keeps rotating. |
 | **Swipe backward on the ground** beside the board | Pushes. You can't push faster than you swipe. |
 | **RESET** (top right) | Puts the board back at the start. |
+| **II PAUSE** (under RESET), back button | Pauses the game and opens the settings menu. |
 
 The controls are tuned for **slow, deliberate fingers**: a calm press down the tail (about a
 tenth of a second) pops as well as a sharp flick, and flicking faster gives almost nothing extra
@@ -95,6 +99,16 @@ board back down before it pops, just like a real ollie.
 the tail (a scoop). That end of the board is pushed round, and the board spins flat. For a 360 flip,
 scoop and flick the front finger toward the **same** side (both feet toward your heels, like a
 real backside scoop + kickflip). The shove comes round; the flip currently gets about half way.
+
+**Pause menu settings** (saved on the phone; DEFAULTS puts them back to `board_tuning.tres`):
+
+| Setting | What it does |
+|---|---|
+| Game speed | Slow motion (0.1×–1.5×). The physics is identical, only slower: the same fingers per tick give the same trick. Your fingers aren't slowed, so a flick reads faster in slow motion; move your fingers slower to match. |
+| Gravity | × real gravity. Lower = more hang time. |
+| Board flip speed | Scales how fast a flick can roll the board and how fast a scoop can spin it. |
+| Flick sensitivity | How much a finger speed counts as a press (pops and flicks). Higher = easier. |
+| Camera | Distance behind, height, orbit round the board (left/right), tilt (aim up/down) and field of view. |
 
 ## How the physics works (short version)
 
@@ -150,7 +164,7 @@ apply live if you edit the resource while the game runs (Remote scene tree).
 ## Tests
 
 Headless physics checks that simulate real touch input: an ollie with and without the front slide,
-three pushes, a determinism repeat, an ollie down the stairs at speed, and an upside-down landing. Each scenario also
+three pushes, a determinism repeat, the same ollie at half game speed, an ollie down the stairs at speed, and an upside-down landing. Each scenario also
 prints "feel" numbers (sustained spin, bounces and settle time after landing, how much speed is
 kept, yaw drift), which is how "heavier" was measured:
 
@@ -189,6 +203,8 @@ scripts/
   chase_camera.gd         low smooth chase camera
   haptics.gd              vibration on pop and landing
   debug_overlay.gd        finger dots/arrows, board map, speed/height/angles, reset
+  pause_menu.gd           pause button + settings menu (sliders, resume, reset, defaults)
+  game_settings.gd        the player's settings: saved/loaded, applied on top of the tuning
 shaders/                  concrete (slab joints = motion cue), grass, grip tape, deck wood
 tests/test_ollie.gd       headless physics tests
 ```

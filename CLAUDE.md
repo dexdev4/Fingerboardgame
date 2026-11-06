@@ -227,6 +227,25 @@ Follow these rules in every session. If a request conflicts with them, say so be
   turns the roll into pitch while the board shoves round in the short hang time. Lower scoop caps
   (10, 13) trade spin for roll but still don't land it.
 
+## M12 decisions (pause menu and player settings)
+
+- `PauseMenu` (CanvasLayer, PROCESS_MODE_ALWAYS): SceneTree.paused freezes physics; pausing and
+  resuming call `input.clear()` (fingers lifted). The pause button is in `ui_blockers`.
+  Back button toggles pause (quit_on_go_back = false); leaving the app pauses (mobile only).
+- `GameSettings` sits ON TOP of the tuning: defaults are read from a fresh (uncached) load of
+  board_tuning.tres; apply() writes the player's values into the live tuning (flip speed scales
+  press_side_max_roll / press_side_max_speed / press_scoop_max_spin; flick sensitivity →
+  `flick_sensitivity`, which multiplies press_speed and press_speed_side in FingerInput; gravity
+  → gravity_multiplier + the world's gravity; camera_* absolute). Slider ranges: menu_* fields.
+- **Game speed keeps determinism**: Godot steps physics by (1/ticks)·time_scale, so we set
+  ticks = 120·speed AND time_scale = ticks/120 — every step stays exactly 1/120 s, only fewer per
+  real second. Never use time_scale alone (it shrinks dt and changes the physics). Test 19 checks
+  a half-speed ollie is identical to scenario 0. Fingers aren't scaled: in slow motion a real
+  flick spans fewer ticks and reads faster (the player is "faster than the world").
+- Camera: camera_orbit_deg swings the camera round the board (+ = board's right),
+  camera_aim_height tilts the aim point. Both 0 = the M7 view exactly.
+- Tests set `main.use_player_settings = false` so a saved settings file can't change results.
+
 ## Milestones
 
 - **M1 (done)**: project setup, ground, board, chase camera, finger→foot input, ollie via physics,
@@ -244,6 +263,8 @@ Follow these rules in every session. If a request conflicts with them, say so be
   bigger, more polished park. 360 flip still a known gap.
 - **M11 (done, partial)**: the scoop works (shove-it spin ~170–310°, asserted); it no longer
   cancels the front flick. The 360 flip's flip half is still a known gap (lands on its side).
+- **M12 (done)**: pause menu with game speed, flip speed, flick sensitivity, gravity and camera
+  position/angle settings (saved on the device).
 - Flip tricks, catches and turns come only from the general finger physics; never add
   trick-specific code.
 

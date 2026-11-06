@@ -71,6 +71,7 @@ func _start_scenario() -> void:
 	holder.own_world_3d = true
 	root.add_child(holder)
 	main = load("res://scenes/main.tscn").instantiate()
+	main.use_player_settings = false   # a saved settings file must never change test results
 	holder.add_child(main)
 	board = null   # fetched once main's _ready has run
 	tick = 0
@@ -108,6 +109,7 @@ func _start_scenario() -> void:
 		# same screen direction as the flick. (The nose then swings away from the flicking finger.)
 		17: _plan_flip(Vector2(0.18, -0.26), SLIDE_START + 4, Vector2(0.06, 0.12), FLIP_FLICK_TICKS, Vector2(0.14, 0.0))
 		18: _plan_second_finger()
+		19: _plan_slow_motion()
 		_:
 			_finish()
 
@@ -279,6 +281,15 @@ func _plan_flip(dir: Vector2, start: int, back := Vector2(0.0, 0.12), ticks := F
 
 
 ## Pop, then slide the front finger up AND off the side of the nose — a kickflip-style flick.
+## Scenario 0's ollie with the pause menu's game speed at 0.5: fewer ticks per real second, but
+## every tick is the same 1/120 s and the fingers move per tick, so the result must be identical.
+func _plan_slow_motion() -> void:
+	schedule.append([1, func():
+		main.settings.game_speed = 0.5
+		main.apply_settings()])
+	_plan_ollie(true)
+
+
 func _plan_flip_attempt() -> void:
 	# The flick comes as the board rises off the tail (later than an ollie's slide).
 	schedule.append([SETTLE, func(): _ollie_now(SETTLE, true, Vector2(0.18, -0.26), SLIDE_START + 4,
@@ -352,7 +363,8 @@ func _report() -> void:
 			"roll straight (fingers centred)", "carve (fingers toward the right rail)",
 			"catch in the air (no front slide, then re-touch)", "catch and drag in the air (adjust)",
 			"ollie with a slightly crooked front slide", "kickflip: soft flick", "kickflip: hard flick",
-			"360 flip: flick + back-foot scoop", "second finger placement"]
+			"360 flip: flick + back-foot scoop", "second finger placement",
+			"ollie + slide at half game speed (pause menu)"]
 	var max_h := 0.0
 	var max_pitch := 0.0
 	var max_speed := 0.0
@@ -390,6 +402,9 @@ func _report() -> void:
 			_expect(max_speed > 60.0, "three swipes should reach stair-clearing speed (>60 cm/s)")
 		3:
 			_expect(str(results[0]) == str(results[3]), "same input must give the same result")
+		19:
+			_expect(str(results[0]) == str(results[19]), "half game speed gives exactly the same ollie (same ticks)")
+			GameSettings.apply_game_speed(board.tuning.physics_ticks_per_second, 1.0)
 		6:
 			_expect(roll_peak > 90.0, "flicking off the side in the air rolls the board (>90°)")
 			_expect(absf(straight_roll) < 30.0, "a straight ollie barely rolls (<30°)")
