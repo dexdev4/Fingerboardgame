@@ -28,7 +28,8 @@ Follow these rules in every session. If a request conflicts with them, say so be
    scripts — add an `@export` field to `BoardTuning` instead, with a comment and units.
 5. **Failure is physical.** If a finger leaves the board, or doesn't follow through, the trick
    fails because the forces stop — never because a rule says "fail".
-6. **Target**: Android phones, landscape, 60 fps minimum, multitouch.
+6. **Target**: Android phones, **portrait** (held upright — the user's choice in M7), 60 fps
+   minimum, multitouch.
 7. **Code style**: small, single-purpose scripts; comment everything; explain any physics math
    (units, sign conventions, why) in comments next to the code.
 
@@ -131,6 +132,20 @@ Follow these rules in every session. If a request conflicts with them, say so be
   board's centre over the ledge side of the edge (inside wheels on top, board tilted).
 - Side obstacles (ledge, flat bar, handrail) need steering to reach — still not built.
 
+## M7 decisions (portrait)
+
+- Orientation 1 (portrait), desktop window 540×960. Tests run in a 720×1280 SubViewport.
+- Finger speeds are measured in **screen units = the screen's SHORT side** (`_screen_unit`), not
+  screen height — so the same physical flick presses the same in portrait and landscape. Test
+  finger distances use the short side too.
+- Portrait camera: distance 1.15, height 0.8, fov 55 (vertical), look-ahead 0.35 — board in the
+  lower-middle at ~half the width, ground both sides for pushing, the run ahead in the top half.
+  The steeper view shows less ground per pixel, so push_speed_scale is 3.0.
+- Side presses also need the finger to really cross the deck toward the rail in board space
+  (`press_side_min_cross_speed`); a straight slide could pick up screen-space sideways motion.
+- Test roll metric ignores one-tick contact spikes (a single wheel landing first), like peak spin.
+- Flip attempt now reaches a full ~390° roll; it lands ~20° over-rotated in the test.
+
 ## Milestones
 
 - **M1 (done)**: project setup, ground, board, chase camera, finger→foot input, ollie via physics,
@@ -140,6 +155,7 @@ Follow these rules in every session. If a request conflicts with them, say so be
 - **M4 (done)**: smoother still, high friction for upside-down/side landings, more realistic board.
 - **M5 (done)**: lower gravity, side presses for flip attempts, clean pops, maximum board realism.
 - **M6 (done)**: grinds and slides (solid trucks, contact-impulse friction, in-line rail + ledge).
+- **M7 (done)**: portrait mode.
 - Steering is still not built — ask before adding it. Flip tricks come only from the general
   press physics; never add trick-specific code.
 

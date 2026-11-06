@@ -100,7 +100,7 @@ extends Resource
 ## Downward force of a resting finger while the board is on its wheels, in board weights.
 @export var foot_rest_weight: float = 0.25
 ## How fast a pressing finger drives its point of the deck down (units/s) per unit of
-## press speed (screen heights/s). Press speed = finger speed on screen toward the end of the
+## press speed (screen units/s; 1 unit = the screen's short side). Press speed = finger speed on screen toward the end of the
 ## board nearest that finger. THE main "pop strength" knob.
 @export var press_speed_gain: float = 3.2
 ## Press only works on the outer part of the board, where the kicks rise: it fades in from
@@ -122,10 +122,13 @@ extends Resource
 ## Response time for side presses (s). A flick off the side touches the rail only briefly, so
 ## it needs a quicker foot than the smooth ollie press (press_response_time). Keep ≥ 2 ticks.
 @export var press_side_response_time: float = 0.03
+## A side press only counts if the finger crosses the deck toward that rail at least this fast
+## (units/s, measured on the board; 0.5 = 5 cm/s real). Stops straight slides rolling the board.
+@export var press_side_min_cross_speed: float = 0.5
 ## Side presses fade in from this distance from the centre line (mm) to full at the rail.
 ## The deck is 28 mm wide, so the rail is at 14 mm.
 @export var press_side_zone_start_mm: float = 3.0
-## Finger speeds below this (screen heights/s) don't press — filters jitter.
+## Finger speeds below this (screen units/s; 1 unit = the screen's short side) don't press — filters jitter.
 @export var press_deadzone: float = 0.15
 ## How quickly a foot gets its point of the deck up to speed (s). Smaller = snappier, harder
 ## feet. Keep ≥ 2 physics ticks (0.017 s at 120 Hz) for stability.
@@ -150,18 +153,18 @@ extends Resource
 @export var push_max_accel: float = 40.0
 ## Converts swipe speed across the ground into pushing-foot speed. The camera foreshortens
 ## the ground, so a natural swipe covers little ground; >1 makes a full swipe a full push.
-@export var push_speed_scale: float = 2.0
+@export var push_speed_scale: float = 3.0
 ## A ground touch must land within this distance of the board to push (mm).
 @export var push_reach_mm: float = 250.0
 
 @export_group("Camera")
 ## Horizontal distance behind the board (world units; the board is 0.96 long).
 ## Closer = bigger board on screen = finer finger control.
-@export var camera_distance: float = 1.2
-@export var camera_height: float = 0.5
-@export var camera_fov_deg: float = 40.0
+@export var camera_distance: float = 1.15
+@export var camera_height: float = 0.8
+@export var camera_fov_deg: float = 55.0
 ## The camera aims this far ahead of the board.
-@export var camera_look_ahead: float = 0.1
+@export var camera_look_ahead: float = 0.35
 ## How quickly the camera catches up with the board (1/s).
 @export var camera_follow: float = 3.0
 ## How quickly the camera swings round to the board's heading (1/s).

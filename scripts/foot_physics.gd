@@ -4,7 +4,7 @@
 ## drives its contact point toward a target speed, using just enough force (capped):
 ##
 ##   1. PRESS (along board −Y, into the deck)
-##      press_speed = finger speed on screen toward the board end nearest it (screen heights/s).
+##      press_speed = finger speed on screen toward the board end nearest it (screen units/s; 1 unit = the screen's short side).
 ##                    Back foot: flick DOWN the screen onto the tail. Front foot: drag UP toward
 ##                    the nose. (Kicks rise toward the tips, so a foot driven toward a tip runs
 ##                    into the kick and pushes it down.)
@@ -80,6 +80,12 @@ static func apply(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
 	# down and levers the board up onto its tail instead of letting it pop off.
 	var push_end := 0.0 if end_down else maxf(f.press_speed - t.press_deadzone, 0.0) * zone
 	var push_side := maxf(f.press_speed_side - t.press_deadzone, 0.0) * zone_side * t.press_side_gain
+	# A side press also needs the finger to really cross the deck toward that rail (board space,
+	# units/s). On screen alone, a finger sliding straight toward the nose can pick up a small
+	# sideways component from the camera angle, and a little roll makes that worse — a feedback
+	# loop that rolled straight ollies.
+	if f.local_vel.x * signf(f.local_pos.x) < t.press_side_min_cross_speed:
+		push_side = 0.0
 	# Each direction has its own speed cap: end presses stay slow and smooth (foot_max_speed),
 	# side presses may go faster (press_side_max_speed) so a flip can come round in the air.
 	var v_end := minf(t.press_speed_gain * push_end, t.foot_max_speed)

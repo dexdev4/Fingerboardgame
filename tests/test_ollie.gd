@@ -24,6 +24,7 @@ var upside_start := Vector3.ZERO
 ## Total roll (rotation about the board's long axis), degrees, accumulated every tick.
 var roll_total := 0.0
 var straight_roll := 0.0
+var prev_roll_rate := 0.0
 var roll_peak := 0.0      # largest |roll| reached during the scenario, degrees
 ## Grind/slide scenarios: per tick [truck contacts, deck-slide contacts, z, speed cm/s].
 var contact_rows: Array = []
@@ -51,7 +52,7 @@ func _start_scenario() -> void:
 		holder.free()
 	# A fresh World3D per scenario = a fresh physics space, so a repeat run is a true repeat.
 	holder = SubViewport.new()
-	holder.size = Vector2i(1280, 720)
+	holder.size = Vector2i(720, 1280)   # portrait phone
 	holder.own_world_3d = true
 	root.add_child(holder)
 	main = load("res://scenes/main.tscn").instantiate()
@@ -60,6 +61,7 @@ func _start_scenario() -> void:
 	tick = 0
 	roll_total = 0.0
 	roll_peak = 0.0
+	prev_roll_rate = 0.0
 	contact_rows.clear()
 	log_rows.clear()
 	schedule.clear()
@@ -96,7 +98,13 @@ func _physics_process(_dt: float) -> bool:
 		stairs_trigger_z = INF
 		_ollie_now(tick, true)
 	var a := board.angles_deg()
-	roll_total += rad_to_deg(board.angular_velocity.dot(board.global_transform.basis.z)) / Engine.physics_ticks_per_second
+	# Roll rate about the board's long axis. Only count roll sustained over 2+ ticks: a single
+	# wheel touching down first gives a one-tick contact spike that doesn't actually turn the
+	# board (the same filter as the feel metrics' "peak spin").
+	var rr := board.angular_velocity.dot(board.global_transform.basis.z)
+	var sustained := signf(rr) * minf(absf(rr), absf(prev_roll_rate)) if signf(rr) == signf(prev_roll_rate) else 0.0
+	prev_roll_rate = rr
+	roll_total += rad_to_deg(sustained) / Engine.physics_ticks_per_second
 	roll_peak = maxf(roll_peak, absf(roll_total))
 	if tick >= SETTLE:
 		contact_rows.append([board.truck_contacts, board.deck_slide_contacts, board.global_position.z, board.speed_cm_s()])
@@ -177,7 +185,8 @@ func _plan_flip_attempt() -> void:
 ## Both fingers land now (tail + front bolts), then: tail flick, optional front slide, lift.
 ## `slide_dir` = front finger motion as a fraction of the screen height (default: straight up).
 func _ollie_now(at: int, slide: bool, slide_dir := Vector2(0.0, -0.22), slide_start := SLIDE_START) -> void:
-	var h := cam.get_viewport().get_visible_rect().size.y
+	var vsz := cam.get_viewport().get_visible_rect().size
+	var h := minf(vsz.x, vsz.y)   # finger distances in screen short sides
 	var tail := _screen_of_local(Vector3(0, 0, board.geo.half_length * 0.85))
 	var front := _screen_of_local(Vector3(0, 0, -board.geo.axle_z))   # front bolts
 	_touch(0, tail, true)
@@ -217,8 +226,9 @@ func _plan_push() -> void:
 	for k in 3:
 		var at := SETTLE + k * (SWIPE_TICKS + 12)
 		schedule.append([at, func():
-			var h := cam.get_viewport().get_visible_rect().size.y
-			var beside := _screen_of_local(Vector3(board.geo.half_width * 3.0, -board.geo.rest_height, 0))
+			var vsz := cam.get_viewport().get_visible_rect().size
+			var h := minf(vsz.x, vsz.y)   # finger distances in screen short sides
+			var beside := _screen_of_local(Vector3(board.geo.half_width * 2.2, -board.geo.rest_height, 0))   # just off the side
 			_touch(0, beside, true)
 			_plan_move(0, at + 1, beside, Vector2(0, h * 0.3), SWIPE_TICKS)])
 		schedule.append([at + SWIPE_TICKS + 2, func(): _touch(0, Vector2.ZERO, false)])

@@ -14,6 +14,8 @@ bushings, washers and axle nuts, lipped wheels with bearings).
 that edge, so flip tricks can come out of the physics; the most realistic board yet (curved
 kicks, bumpy grip, wood grain, Phillips bolts, rounded baseplates, a printed wordmark), 4×
 anti-aliasing and film-like colour.
+**Milestone 7:** portrait mode — hold the phone upright; the board runs up the screen with the
+run ahead visible above it and room either side to push.
 **Milestone 6:** grinds and slides — solid trucks that lock onto rails and ledge edges, real
 friction between metal trucks / wooden deck and steel, painted or concrete surfaces, and a flat
 bar and a ledge right on the run-up line.
@@ -106,7 +108,7 @@ Every time:
 - **Or build an APK:** *Project → Export… → Android → Export Project* (`build/fingerboard.apk`),
   then `adb install -r build/fingerboard.apk`.
 
-The preset in `export_presets.cfg` is already set up: arm64, landscape (either way up),
+The preset in `export_presets.cfg` is already set up: arm64, portrait (hold the phone upright),
 immersive full screen, VIBRATE permission for haptics. Tests are excluded from the build.
 
 Desktop testing: running in the editor works, and the mouse acts as one finger (push, or a single

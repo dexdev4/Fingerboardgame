@@ -141,7 +141,8 @@ func _update_foot(f: Finger, board_xf: Transform3D, size: Vector2, dt: float) ->
 		f.local_vel = Vector3.ZERO
 
 	# Press speed: finger speed on screen toward the board end nearest to it, in screen
-	# heights per second (resolution independent). For the back foot that end is the tail
+	# units per second (one unit = the screen's SHORT side, so it's resolution independent and
+	# a 1 cm flick means the same in portrait and landscape). For the back foot that end is the tail
 	# (a flick down the screen); for the front foot it's the nose (a drag up toward the nose).
 	var end := geo.tail_tip() if lp.z > 0.0 else geo.nose_tip()
 	var p_c = ScreenMath.project(camera, size, board_xf.origin)
@@ -149,7 +150,7 @@ func _update_foot(f: Finger, board_xf: Transform3D, size: Vector2, dt: float) ->
 	var dir := Vector2.DOWN if lp.z > 0.0 else Vector2.UP
 	if p_c != null and p_e != null and p_c.distance_to(p_e) > 2.0:
 		dir = (p_e - p_c).normalized()
-	f.press_speed = f.screen_vel.dot(dir) / size.y
+	f.press_speed = f.screen_vel.dot(dir) / _screen_unit(size)
 
 	# Side press speed: the same idea across the board. The concave rises toward the rails, so
 	# a finger driven toward the nearest side edge presses that edge (flip-trick flicks).
@@ -158,7 +159,7 @@ func _update_foot(f: Finger, board_xf: Transform3D, size: Vector2, dt: float) ->
 	var p_rail = ScreenMath.project(camera, size, board_xf * Vector3(side * geo.half_width, 0.0, lp.z))
 	f.press_speed_side = 0.0
 	if p_mid != null and p_rail != null and p_mid.distance_to(p_rail) > 2.0:
-		f.press_speed_side = f.screen_vel.dot((p_rail - p_mid).normalized()) / size.y
+		f.press_speed_side = f.screen_vel.dot((p_rail - p_mid).normalized()) / _screen_unit(size)
 
 
 ## Measure a push finger: its velocity across the ground plane (units/s).
@@ -180,3 +181,9 @@ func _deck_point(r: Array, board_xf: Transform3D) -> Variant:
 func _within_deck(lp: Vector3) -> bool:
 	return absf(lp.x) <= geo.half_width + tuning.mm(tuning.foot_catch_margin_mm) \
 			and absf(lp.z) <= geo.half_length + tuning.mm(tuning.foot_end_margin_mm)
+
+
+## One "screen unit" = the screen's short side in pixels. Finger speeds are measured in these, so
+## the same physical flick gives the same press whether the phone is upright or sideways.
+static func _screen_unit(size: Vector2) -> float:
+	return minf(size.x, size.y)

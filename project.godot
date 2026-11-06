@@ -1,5 +1,5 @@
 ; Engine configuration file.
-; Godot 4.5+. Android, landscape, multitouch, Jolt physics at a fixed 120 Hz.
+; Godot 4.5+. Android, portrait, multitouch, Jolt physics at a fixed 120 Hz.
 
 config_version=5
 
@@ -13,10 +13,10 @@ config/icon="res://icon.svg"
 
 [display]
 
-window/size/viewport_width=1280
-window/size/viewport_height=720
-; 4 = sensor landscape: landscape, either way up.
-window/handheld/orientation=4
+window/size/viewport_width=540
+window/size/viewport_height=960
+; 1 = portrait (held upright). The board runs up the screen: more room along it for fingers.
+window/handheld/orientation=1
 window/energy_saving/keep_screen_on=true
 
 [input_devices]

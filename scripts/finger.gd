@@ -25,9 +25,9 @@ var local_pos := Vector3.ZERO
 ## Finger velocity over the deck, board local (units/s). Pure finger motion: both ends are
 ## measured against the *current* board pose, so the board moving under a still finger reads 0.
 var local_vel := Vector3.ZERO
-## Finger speed on screen toward the end of the board nearest it (screen heights/s).
+## Finger speed on screen toward the end of the board nearest it (screen units/s; 1 unit = the screen's short side).
 var press_speed := 0.0
-## Finger speed on screen toward the side edge (rail) nearest it (screen heights/s).
+## Finger speed on screen toward the side edge (rail) nearest it (screen units/s; 1 unit = the screen's short side).
 var press_speed_side := 0.0
 ## Last forces applied (for the debug overlay), world units.
 var press_force := 0.0
