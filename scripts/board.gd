@@ -197,8 +197,36 @@ func _pop(state: PhysicsDirectBodyState3D, r: Vector3, n: Vector3) -> void:
 		return
 	var ang_term := (state.inverse_inertia_tensor * rc.cross(n)).cross(rc).dot(n)
 	var m_eff := 1.0 / (state.inverse_mass + ang_term)
-	state.apply_impulse(n * tuning.tail_restitution * v_in * m_eff, r)
+	# A SNAPPED kick (a foot is driving it into the ground) pops harder than a kick that just
+	# lands: the foot loads the deck and it springs back. Two parts, both ∝ the strike speed:
+	#  - extra bounce at the tail (pop_snap_restitution): pushing the tail tip up also tips
+	#    the nose back DOWN, so the board stops standing up vertical;
+	#  - extra lift through the centre of mass (pop_snap_lift × the bounce speed): the whole
+	#    deck springs up, so the board leaves the ground evenly instead of only rotating.
+	# Landings on a kick (no foot snapping it) keep the plain tail_restitution bounce.
+	var snapped := _foot_snapping(r)
+	var e := tuning.tail_restitution + (tuning.pop_snap_restitution if snapped else 0.0)
+	state.apply_impulse(n * e * v_in * m_eff, r)
+	if snapped:
+		state.apply_central_impulse(n * tuning.pop_snap_lift * e * v_in / state.inverse_mass)
 	popped.emit(v_in)
+
+
+## True if a foot SNAPPED the kick at offset `r` (global orientation, from the body origin) into
+## the ground: the board is on its wheels and a foot on that end was pressing it down hard.
+func _foot_snapping(r: Vector3) -> bool:
+	# Only from the wheels: the foot loads the deck against the ground by tipping it on an axle.
+	# A kick scraping the ground mid-air (mid-flip) is not a snap, even under a resting finger.
+	if wheels_down == 0:
+		return false
+	var end := signf((global_transform.basis.inverse() * r).z)   # +1 tail, −1 nose
+	var min_force := tuning.board_weight() * tuning.pop_snap_min_weights
+	for f in input.feet():
+		# Pressing hard on that end on the tick before the strike (this tick the press is
+		# already off: the kick is down).
+		if f.on_board and signf(f.local_pos.z) == end and f.last_press_force > min_force:
+			return true
+	return false
 
 
 ## Detects touchdown after being airborne (for haptics / overlay only, no forces).

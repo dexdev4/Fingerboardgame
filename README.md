@@ -24,6 +24,8 @@ still being worked on (it comes down on its side).
 **Milestone 12:** pause menu (II PAUSE, the phone's back button, or Esc) with settings: game
 speed (slow motion), board flip speed, flick sensitivity, gravity, and camera distance, height,
 orbit, tilt and zoom. Settings are saved on the phone.
+**Milestone 13:** flatter, higher pops: snapping the tail pops the board up more evenly
+(about half a board length) instead of standing it up vertical; 360 flips now come round and land.
 **Milestone 8:** game feel closer to True Skate / Touchgrind (snappier, rewards sharp flicks,
 carries speed); **steering** (lean the trucks); **catching** the board in the air and adjusting
 it; a much more detailed plaza (hubba, funbox, long ledge, red curb, bank, picnic table, city
@@ -61,8 +63,8 @@ scratch and **overwrites edits made in the editor**:
 |---|---|
 | Touch the **back half** of the board | That finger is your **back foot** (orange dot). |
 | Touch the **front half** | That finger is your **front foot** (cyan dot). |
-| Back foot: **quick flick down the screen** on the tail | Snaps the tail down; it hits the ground and the board pops. A faster flick gives a harder pop. |
-| Front foot: **drag up toward the nose** after the pop | Catches the rising nose and levels the board. No slide means the board keeps rotating. |
+| Back foot: **quick flick down the screen** on the tail | Snaps the tail down; it hits the ground and the board pops up evenly. A faster flick gives a harder pop. |
+| Front foot: **drag up toward the nose** after the pop | Levels the board in the air. No slide means the board stays tilted up and lands tail-first. |
 | **Swipe backward on the ground** beside the board | Pushes. You can't push faster than you swipe. |
 | **RESET** (top right) | Puts the board back at the start. |
 | **II PAUSE** (under RESET), back button | Pauses the game and opens the settings menu. |
@@ -98,7 +100,7 @@ board back down before it pops, just like a real ollie.
 **Shove-its / 360 flips:** as you snap the tail, keep the back finger moving **sideways** along
 the tail (a scoop). That end of the board is pushed round, and the board spins flat. For a 360 flip,
 scoop and flick the front finger toward the **same** side (both feet toward your heels, like a
-real backside scoop + kickflip). The shove comes round; the flip currently gets about half way.
+real backside scoop + kickflip). Both come round: the board flips once and shoves round, and lands on its wheels.
 
 **Pause menu settings** (saved on the phone; DEFAULTS puts them back to `board_tuning.tres`):
 
@@ -164,13 +166,14 @@ apply live if you edit the resource while the game runs (Remote scene tree).
 ## Tests
 
 Headless physics checks that simulate real touch input: an ollie with and without the front slide,
-three pushes, a determinism repeat, the same ollie at half game speed, an ollie down the stairs at speed, and an upside-down landing. Each scenario also
+three pushes, a determinism repeat, a pop shove-it, the same ollie at half game speed, an ollie down the stairs at speed, and an upside-down landing. Each scenario also
 prints "feel" numbers (sustained spin, bounces and settle time after landing, how much speed is
 kept, yaw drift), which is how "heavier" was measured:
 
 ```
 godot --headless --path . -s res://tests/test_ollie.gd
 TRACE=0 godot --headless --path . -s res://tests/test_ollie.gd   # per-tick trace of scenario 0
+ONLY=0,1 godot --headless --path . -s res://tests/test_ollie.gd  # run just scenarios 0 and 1
 ```
 
 ## Layout

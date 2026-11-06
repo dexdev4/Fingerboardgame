@@ -62,6 +62,12 @@ var started := false
 
 
 func _start_scenario() -> void:
+	# ONLY=0,1,6 runs just those scenarios (quick tuning loops); unset = run everything.
+	var only := OS.get_environment("ONLY")
+	if only != "":
+		var wanted := Array(only.split(",")).map(func(x): return int(x))
+		while scenario <= 20 and not wanted.has(scenario):
+			scenario += 1
 	if holder:
 		root.remove_child(holder)   # free now: a queued-free board would still collide this tick
 		holder.free()
@@ -110,6 +116,7 @@ func _start_scenario() -> void:
 		17: _plan_flip(Vector2(0.18, -0.26), SLIDE_START + 4, Vector2(0.06, 0.12), FLIP_FLICK_TICKS, Vector2(0.14, 0.0))
 		18: _plan_second_finger()
 		19: _plan_slow_motion()
+		20: _plan_shove_it()
 		_:
 			_finish()
 
@@ -290,6 +297,14 @@ func _plan_slow_motion() -> void:
 	_plan_ollie(true)
 
 
+## Pop shove-it: the 360 flip's backside scoop, but the front foot just lifts as the board pops
+## (no slide, no flick) — like a real shove-it, where the front foot stays out of the way.
+func _plan_shove_it() -> void:
+	schedule.append([SETTLE, func():
+		_ollie_now(SETTLE, false, Vector2.ZERO, SLIDE_START, Vector2(0.06, 0.12), SLIDE_TICKS, Vector2(0.14, 0.0))])
+	schedule.append([SETTLE + SLIDE_START, func(): _touch(1, Vector2.ZERO, false)])
+
+
 func _plan_flip_attempt() -> void:
 	# The flick comes as the board rises off the tail (later than an ollie's slide).
 	schedule.append([SETTLE, func(): _ollie_now(SETTLE, true, Vector2(0.18, -0.26), SLIDE_START + 4,
@@ -364,7 +379,7 @@ func _report() -> void:
 			"catch in the air (no front slide, then re-touch)", "catch and drag in the air (adjust)",
 			"ollie with a slightly crooked front slide", "kickflip: soft flick", "kickflip: hard flick",
 			"360 flip: flick + back-foot scoop", "second finger placement",
-			"ollie + slide at half game speed (pause menu)"]
+			"ollie + slide at half game speed (pause menu)", "pop shove-it (scoop, front foot lifts)"]
 	var max_h := 0.0
 	var max_pitch := 0.0
 	var max_speed := 0.0
@@ -394,14 +409,21 @@ func _report() -> void:
 			_expect(absf(last[2]) < 10.0 and last[4] >= 3, "with front slide the board should land flat on its wheels")
 		1:
 			_expect(max_h > 4.0, "no-slide pop should still lift")
-			var slide_pitch := 0.0
-			for r in results[0]:
-				slide_pitch = maxf(slide_pitch, r[2])
-			_expect(slide_pitch < max_pitch - 5.0, "front slide should catch the nose (less over-rotation)")
+			# A snapped pop leaves the ground at the tail-strike angle (~47°). With no slide the
+			# board stays tilted; the front slide levels it on the way up. Compare the pitch on
+			# the way DOWN (at half the jump height).
+			var slide_desc := _descent_pitch(results[0])
+			var still_desc := _descent_pitch(results[1])
+			print("  pitch on the way down: with slide %.1f°, no slide %.1f°" % [slide_desc, still_desc])
+			_expect(slide_desc < still_desc - 15.0, "front slide levels the board (no slide stays tilted)")
 		2:
 			_expect(max_speed > 60.0, "three swipes should reach stair-clearing speed (>60 cm/s)")
 		3:
 			_expect(str(results[0]) == str(results[3]), "same input must give the same result")
+		20:
+			print("  shove-it: spin %.0f°, roll %.0f°" % [yaw_total, roll_peak])
+			_expect(absf(yaw_total) > 120.0 and absf(yaw_total) < 450.0 and roll_peak < 90.0,
+					"a scoop with the front foot lifted is a shove-it (120–450° spin, no flip)")
 		19:
 			_expect(str(results[0]) == str(results[19]), "half game speed gives exactly the same ollie (same ticks)")
 			GameSettings.apply_game_speed(board.tuning.physics_ticks_per_second, 1.0)
@@ -431,10 +453,9 @@ func _report() -> void:
 			# M11: the scoop spins the board round (shove axis + pure-spin torque) — asserted.
 			_expect(yaw_total > 120.0 and yaw_total < 450.0, "the back-foot scoop shoves the board round (120–450°)")
 			_expect(roll_peak > 90.0, "the scoop no longer cancels the front flick (>90° roll)")
-			# KNOWN GAP (M11): the flip half. The flick now rolls the board as fast as a kickflip,
-			# but while the board shoves round the flip's angular momentum stays fixed in the world
-			# (torque-free rigid-body motion: roll turns into pitch), so it comes down on its side.
-			print("  [known gap] 360 flip roll %.0f° (target 270–450°, landing on the wheels)" % roll_peak)
+			# M13: the snapped pop leaves the board flatter, so the flip half comes round too.
+			_expect(roll_peak > 270.0 and roll_peak < 450.0 and last[4] >= 3,
+					"the 360 flip comes round (270–450° flip) and lands on its wheels")
 		18:
 			print("  roles: back %d, second (landed on the back half) %d, just-off-the-edge %d"
 					% second_roles)
@@ -450,14 +471,19 @@ func _report() -> void:
 			print("  yaw after the roll %.1f° (negative = turned right)" % yaw)
 			_expect(yaw < -20.0, "weight toward the right rail carves right (>20°)")
 		12:
-			var catch_pitch := 0.0
-			for r in log_rows.slice(SETTLE + CATCH_TOUCH + 2):
-				catch_pitch = maxf(catch_pitch, r[2])
-			var no_catch_pitch := 0.0
-			for r in results[1]:
-				no_catch_pitch = maxf(no_catch_pitch, r[2])
-			print("  max pitch after the catch %.1f° (no catch: %.1f°)" % [catch_pitch, no_catch_pitch])
-			_expect(catch_pitch < no_catch_pitch - 10.0, "the catch stops the over-rotation")
+			var catch_pitch := _descent_pitch(log_rows)
+			var no_catch_pitch := _descent_pitch(results[1])
+			print("  pitch on the way down after the catch %.1f° (no catch: %.1f°)" % [catch_pitch, no_catch_pitch])
+			# Mean |ω| from the catch until 30 ticks later, vs the same ticks without a catch.
+			var w_catch := 0.0
+			var w_free := 0.0
+			for i in range(SETTLE + CATCH_TOUCH + 2, SETTLE + CATCH_TOUCH + 32):
+				w_catch += log_rows[i][5] / 30.0
+				w_free += results[1][i][5] / 30.0
+			print("  mean spin after the catch %.1f rad/s (no catch: %.1f)" % [w_catch, w_free])
+			# Snapped pops no longer over-rotate (M13), so the catch's job here is to hold the
+			# board steady: a still catching finger takes spin out of it.
+			_expect(w_catch < w_free * 0.8, "a still catching finger steadies the board (less spin)")
 			_expect(last[4] == 4 and absf(last[2]) < 10.0, "caught board lands on its wheels")
 		13:
 			print("  yaw turned in the air %.1f° (at touchdown)" % yaw_at_touchdown)
@@ -530,6 +556,18 @@ func _expect(ok: bool, what: String) -> void:
 	print(("  PASS: " if ok else "  FAIL: ") + what)
 	if not ok:
 		failures += 1
+
+
+## Pitch of the board on the way down, when it has fallen back to half its jump height.
+func _descent_pitch(rows: Array) -> float:
+	var top := SETTLE
+	for i in range(SETTLE, rows.size()):
+		if rows[i][1] > rows[top][1]:
+			top = i
+	for i in range(top, rows.size()):
+		if rows[i][1] < rows[top][1] * 0.5:
+			return rows[i][2]
+	return rows[-1][2]
 
 
 func _finish() -> void:

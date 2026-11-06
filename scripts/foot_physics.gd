@@ -60,6 +60,7 @@ extends RefCounted
 ## `popped_end`: which kick popped last (+1 tail, −1 nose, 0 none) — the one a foot can scoop.
 static func apply(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
 		t: BoardTuning, grounded: bool, supported: bool, end_down: bool, popped_end: float = 0.0) -> void:
+	f.last_press_force = f.press_force
 	f.press_force = 0.0
 	f.drag_force = 0.0
 	f.scoop_target = 0.0
@@ -207,6 +208,11 @@ static func _drive_about_axle(state: PhysicsDirectBodyState3D, f: Finger, g: Boa
 static func _scoop_spin(state: PhysicsDirectBodyState3D, f: Finger, t: BoardTuning) -> void:
 	var v_side := f.local_vel.x
 	if absf(v_side) < t.press_scoop_min_speed:
+		return
+	# The foot scoops the GRIP TAPE: once the board has rolled away under it (mid-flip, grip no
+	# longer facing up) the foot isn't on the deck any more. Without this a still finger over a
+	# flipping board read the deck sliding under it as a scoop the other way, and undid the shove.
+	if state.transform.basis.y.dot(Vector3.UP) < t.press_scoop_min_upright:
 		return
 	var axis := shove_axis(state.transform.basis)
 	if axis == Vector3.ZERO:

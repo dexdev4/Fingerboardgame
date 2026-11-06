@@ -34,6 +34,8 @@ var press_speed_side := 0.0
 ## Last forces applied (for the debug overlay), world units.
 var press_force := 0.0
 var drag_force := 0.0
+## press_force of the PREVIOUS tick (Board's pop reads it: on the strike tick the press is off).
+var last_press_force := 0.0
 ## Spin the foot's scoop is driving toward this tick (rad/s about the shove axis, FootPhysics.shove_axis; 0 = not scooping).
 var scoop_target := 0.0
 

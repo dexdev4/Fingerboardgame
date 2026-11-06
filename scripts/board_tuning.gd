@@ -171,11 +171,14 @@ extends Resource
 @export var press_side_min_cross_speed: float = 0.5
 ## Scoops (shove-it spin): a foot on a kick sweeping sideways pushes that end round. Spin per
 ## unit of "spin that matches the foot" (1 = the end moves sideways exactly as fast as the foot).
-@export var press_scoop_gain: float = 4.0
+@export var press_scoop_gain: float = 8.0
 ## Fastest a scoop can spin the board (rad/s) — ~one 360 in a normal pop, however hard you scoop.
 @export var press_scoop_max_spin: float = 18.0
 ## A scoop must move sideways across the deck at least this fast (units/s; 1 = 10 cm/s real).
 @export var press_scoop_min_speed: float = 0.4
+## A foot only scoops while the grip faces up at least this much (deck up · world up; 0.5 = up
+## to 60° away from upright). Mid-flip the deck has rolled away from under the foot.
+@export var press_scoop_min_upright: float = 0.5
 ## Side presses fade in from this distance from the centre line (mm) to full at the rail.
 ## The deck is 28 mm wide, so the rail is at 14 mm.
 @export var press_side_zone_start_mm: float = 3.0
@@ -194,6 +197,16 @@ extends Resource
 @export_group("Pop")
 ## Extra bounce when the tail strikes the ground (0 = dead tail, 1 = superball).
 @export var tail_restitution: float = 0.6
+## Extra bounce when a FOOT snaps the kick into the ground (added to tail_restitution). Pushing
+## the tail tip up also tips the nose back down: higher = flatter pops that rise more.
+## Landings on a kick (no foot pressing it) don't get it.
+@export var pop_snap_restitution: float = 1.5
+## Extra lift for a snapped pop, through the centre of mass (× the tail's bounce speed): the
+## deck springs back as a whole, so the board leaves the ground evenly instead of only rotating.
+@export var pop_snap_lift: float = 0.0
+## A strike counts as a snap only if a foot on that end was pressing at least this hard
+## (board weights) the tick before. A resting finger (foot_rest_weight) doesn't snap.
+@export var pop_snap_min_weights: float = 1.0
 ## Tail strikes slower than this (units/s) don't bounce or buzz.
 @export var pop_min_speed: float = 1.0
 

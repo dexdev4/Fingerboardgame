@@ -222,7 +222,7 @@ Follow these rules in every session. If a request conflicts with them, say so be
 - Tried and rejected: "sticky" foot contacts (contact moves only by finger sliding, with a leash)
   to stop the front finger's projected point drifting as the board tips. Airborne/z-only it was
   harmless to ollies but broke kickflips (normal 422° landing on its side, soft 92°). Don't repeat.
-- KNOWN GAP: the flip half of the 360 flip (~135° roll, lands on its side). Not a force bug:
+- (Closed in M13.) The flip half of the 360 flip (~135° roll, lands on its side). Not a force bug:
   torque-free motion of a spinning plate (Euler: pitch' ≈ shove·roll, roll' ≈ −pitch·shove)
   turns the roll into pitch while the board shoves round in the short hang time. Lower scoop caps
   (10, 13) trade spin for roll but still don't land it.
@@ -246,6 +246,31 @@ Follow these rules in every session. If a request conflicts with them, say so be
   camera_aim_height tilts the aim point. Both 0 = the M7 view exactly.
 - Tests set `main.use_player_settings = false` so a saved settings file can't change results.
 
+## M13 decisions (flatter, more even pops)
+
+- Why pops went vertical: a fingerboard's tail sits ~16 mm up and 21 mm behind the rear axle, so
+  tipping on the rear wheels it only strikes at ~45–48° (geometry; kept). The old bounce
+  (tail_restitution 0.6) left the board still rotating nose-up (→ 75° without a slide) with
+  little lift (33 mm).
+- **Snapped pops** (`Board._foot_snapping`): a kick strike counts as a snap only when the board
+  is on its wheels AND a foot on that end pressed > pop_snap_min_weights the tick before
+  (`Finger.last_press_force`; on the strike tick the press is already off). A snap adds
+  pop_snap_restitution (1.5) to the bounce: the tail tip rebounds harder, which both lifts the
+  board and tips the nose back down. Ollies: 52 mm (was 33); no slide stays tilted ~47° instead
+  of rotating to 75°; the front slide still levels it (descent pitch −8° vs 19°).
+  Landings and mid-air tail scrapes keep plain tail_restitution (no superball re-pops).
+- Tried and rejected: applying part of the bounce through the centre of mass instead of at the
+  tail (pop_lift_share) — it REMOVED the nose-down part of the bounce and made pops more
+  vertical. pop_snap_lift (extra central lift) exists but is 0: it lengthened hang time and threw
+  off the kickflip calibration (soft flicks out-flipped normal ones).
+- Scoop: press_scoop_gain 4 → 8 (the flatter pop needs a stronger scoop for the same shove), and
+  a foot only scoops while the grip faces up (press_scoop_min_upright 0.5): mid-flip, a still
+  finger over the rolling deck read as a reverse scoop and undid the shove.
+- Results: kickflips soft 377° / normal 386° / hard 393°; 360 flip 411° flip + 221° shove,
+  lands on its wheels (no longer a known gap, asserted); pop shove-it (front foot lifted) 167°.
+- Test metrics: "front slide levels" and the catch use the pitch on the way down / mean spin
+  after the catch (snapped pops no longer over-rotate). ONLY=0,1,... runs selected scenarios.
+
 ## Milestones
 
 - **M1 (done)**: project setup, ground, board, chase camera, finger→foot input, ollie via physics,
@@ -265,6 +290,7 @@ Follow these rules in every session. If a request conflicts with them, say so be
   cancels the front flick. The 360 flip's flip half is still a known gap (lands on its side).
 - **M12 (done)**: pause menu with game speed, flip speed, flick sensitivity, gravity and camera
   position/angle settings (saved on the device).
+- **M13 (done)**: flatter, higher, more even pops from a tail snap; the 360 flip lands.
 - Flip tricks, catches and turns come only from the general finger physics; never add
   trick-specific code.
 
@@ -272,4 +298,5 @@ Follow these rules in every session. If a request conflicts with them, say so be
 
 - Headless physics tests: `godot --headless --path . -s res://tests/test_ollie.gd`
   (simulates touch input: ollie, pushes, determinism, ollie down the stairs; prints feel
-  metrics). Run after physics changes. `TRACE=<scenario>` prints a per-tick trace.
+  metrics). Run after physics changes. `TRACE=<scenario>` prints a per-tick trace;
+  `ONLY=0,1,6` runs just those scenarios.
