@@ -47,6 +47,15 @@ func feet() -> Array[Finger]:
 	return out
 
 
+## Feet that landed on the board while it was airborne (catches), and are on the board now.
+func catchers() -> Array[Finger]:
+	var out: Array[Finger] = []
+	for f in feet():
+		if f.caught_in_air and f.on_board:
+			out.append(f)
+	return out
+
+
 func pushers() -> Array[Finger]:
 	var out: Array[Finger] = []
 	for f: Finger in fingers.values():
@@ -56,7 +65,8 @@ func pushers() -> Array[Finger]:
 
 
 ## Called by the board once per physics tick, with the board's current transform.
-func physics_update(board_xf: Transform3D, space: PhysicsDirectSpaceState3D, dt: float) -> void:
+## `airborne`: the board isn't resting on anything this tick (fingers landing now are catches).
+func physics_update(board_xf: Transform3D, space: PhysicsDirectSpaceState3D, dt: float, airborne: bool = false) -> void:
 	var size := camera.get_viewport().get_visible_rect().size
 	# Iterate in touch-index order so results never depend on dictionary ordering.
 	var keys := fingers.keys()
@@ -66,6 +76,7 @@ func physics_update(board_xf: Transform3D, space: PhysicsDirectSpaceState3D, dt:
 		f.sample(tuning.finger_velocity_ticks, dt)
 		if f.role == Finger.Role.NONE:
 			_assign_role(f, board_xf, space, size)
+			f.caught_in_air = airborne and (f.role == Finger.Role.BACK_FOOT or f.role == Finger.Role.FRONT_FOOT)
 		match f.role:
 			Finger.Role.BACK_FOOT, Finger.Role.FRONT_FOOT:
 				_update_foot(f, board_xf, size, dt)

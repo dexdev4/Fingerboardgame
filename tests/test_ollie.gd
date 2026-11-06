@@ -32,6 +32,13 @@ var slide_results := {}
 ## Grind/slide scenarios: drop speed (units/s) and how high above the obstacle to release (units).
 const DROP_SPEED := 4.0
 const DROP_GAP := 0.01
+## Carve scenarios: roll speed and how far toward the right rail both fingers rest (units).
+const CARVE_SPEED := 4.0
+const CARVE_OFFSET := 0.06
+## Catch scenario: the front finger lifts this many ticks after the flick starts, and comes back
+## down on the board (the catch) at CATCH_TOUCH — just after the pop, as a player would.
+const CATCH_LIFT := 12
+const CATCH_TOUCH := 22
 ## Roll-in speed for the stairs scenario (units/s; 10 units/s = 1 m/s real).
 const STAIRS_SPEED := 5.0
 ## Finger timing (physics ticks at 120/s). The controls are tuned for slow, deliberate fingers:
@@ -76,6 +83,10 @@ func _start_scenario() -> void:
 		7: _plan_drop_on("rail", false)
 		8: _plan_drop_on("rail", true)
 		9: _plan_drop_on("ledge", false)
+		10: _plan_carve(0.0)
+		11: _plan_carve(CARVE_OFFSET)
+		12: _plan_catch()
+		13: _plan_catch_adjust()
 		_:
 			_finish()
 
@@ -155,6 +166,38 @@ func _plan_move(idx: int, start_tick: int, from: Vector2, delta: Vector2, ticks:
 
 func _plan_ollie(slide: bool) -> void:
 	schedule.append([SETTLE, func(): _ollie_now(SETTLE, slide)])
+
+
+## Roll forward with both fingers resting `offset` toward the right rail (0 = centred).
+func _plan_carve(offset: float) -> void:
+	schedule.append([SETTLE, func():
+		board.request_reset(board.spawn_xf, -board.spawn_xf.basis.z * CARVE_SPEED)])
+	schedule.append([SETTLE + 2, func():
+		_touch(0, _screen_of_local(Vector3(offset, 0, board.geo.half_length * 0.7)), true)
+		_touch(1, _screen_of_local(Vector3(offset, 0, -board.geo.axle_z)), true)])
+
+
+## Pop with NO front slide (it over-rotates), lift the front finger, then put it back on the
+## board mid-air: a catch. It should stop the rotation, level the board and land it.
+func _plan_catch() -> void:
+	schedule.append([SETTLE, func(): _ollie_now(SETTLE, false)])
+	schedule.append([SETTLE + CATCH_LIFT, func(): _touch(1, Vector2.ZERO, false)])
+	schedule.append([SETTLE + CATCH_TOUCH, func():
+		_touch(1, _screen_of_local(Vector3(0, 0, -board.geo.axle_z)), true)])
+
+
+## Drop the board flat from a height, catch it with a finger and drag the finger sideways:
+## the board should rotate (yaw) under the finger before it lands.
+func _plan_catch_adjust() -> void:
+	schedule.append([SETTLE, func():
+		var xf := board.spawn_xf
+		xf.origin += Vector3.UP * 0.6
+		board.request_reset(xf)])
+	schedule.append([SETTLE + 3, func():
+		var at := _screen_of_local(Vector3(0, 0, -board.geo.axle_z))
+		_touch(1, at, true)
+		var vsz := cam.get_viewport().get_visible_rect().size
+		_plan_move(1, SETTLE + 4, at, Vector2(minf(vsz.x, vsz.y) * 0.12, 0), 18)])
 
 
 ## Drop the board (moving along the line at DROP_SPEED) just above an in-line obstacle:
@@ -239,7 +282,9 @@ func _plan_push() -> void:
 func _report() -> void:
 	var names := ["ollie + front slide", "ollie, no front slide", "push", "ollie + slide (repeat)",
 			"ollie down the stairs", "upside-down landing", "flip attempt (front finger off the side)",
-			"50-50 on the flat bar", "boardslide on the flat bar", "50-50 on the ledge edge"]
+			"50-50 on the flat bar", "boardslide on the flat bar", "50-50 on the ledge edge",
+			"roll straight (fingers centred)", "carve (fingers toward the right rail)",
+			"catch in the air (no front slide, then re-touch)", "catch and drag in the air (adjust)"]
 	var max_h := 0.0
 	var max_pitch := 0.0
 	var max_speed := 0.0
@@ -259,7 +304,7 @@ func _report() -> void:
 	_feel_metrics()
 	results[scenario] = log_rows.duplicate(true)
 	print("  roll: peak %.0f°, net %.0f°" % [roll_peak, roll_total])
-	if scenario >= 7:
+	if scenario >= 7 and scenario <= 9:
 		_report_grind(1 if scenario == 8 else 0)
 	match scenario:
 		0:
@@ -289,6 +334,27 @@ func _report() -> void:
 			print("  slid %.2f units (%.0f mm real), stopped after %d ticks, yaw turned %.0f°"
 					% [slide, slide * 100.0, stop_tick, board.angles_deg().z])
 			_expect(slide < 0.6 and stop_tick < 60, "upside-down board grabs the ground (<6 cm slide, stops <0.5 s)")
+		10:
+			print("  yaw after the roll %.1f°" % board.angles_deg().z)
+			_expect(absf(board.angles_deg().z) < 5.0, "centred fingers roll straight")
+		11:
+			var yaw := board.angles_deg().z
+			var turned := 0.0
+			print("  yaw after the roll %.1f° (negative = turned right)" % yaw)
+			_expect(yaw < -20.0, "weight toward the right rail carves right (>20°)")
+		12:
+			var catch_pitch := 0.0
+			for r in log_rows.slice(SETTLE + CATCH_TOUCH + 2):
+				catch_pitch = maxf(catch_pitch, r[2])
+			var no_catch_pitch := 0.0
+			for r in results[1]:
+				no_catch_pitch = maxf(no_catch_pitch, r[2])
+			print("  max pitch after the catch %.1f° (no catch: %.1f°)" % [catch_pitch, no_catch_pitch])
+			_expect(catch_pitch < no_catch_pitch - 10.0, "the catch stops the over-rotation")
+			_expect(last[4] == 4 and absf(last[2]) < 10.0, "caught board lands on its wheels")
+		13:
+			print("  yaw turned in the air %.1f°" % board.angles_deg().z)
+			_expect(absf(board.angles_deg().z) > 15.0, "dragging a caught finger rotates the board")
 		4:
 			var p := board.global_position
 			print("  end position z %.2f, ground %.2f, roll %.1f°" % [p.z, board.ground_y, board.angles_deg().y])

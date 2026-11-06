@@ -130,7 +130,7 @@ Follow these rules in every session. If a request conflicts with them, say so be
   edits): slickness tags on all obstacles, an in-line flat bar (LineRail, x = 0) and an in-line
   ledge (LineLedge) whose coped edge is at x = −0.07 — a ledge 50-50 is only stable with the
   board's centre over the ledge side of the edge (inside wheels on top, board tilted).
-- Side obstacles (ledge, flat bar, handrail) need steering to reach — still not built.
+- Side obstacles (ledge, flat bar, handrail) are reachable since steering was added in M8.
 
 ## M7 decisions (portrait)
 
@@ -146,6 +146,24 @@ Follow these rules in every session. If a request conflicts with them, say so be
 - Test roll metric ignores one-tick contact spikes (a single wheel landing first), like peak spin.
 - Flip attempt now reaches a full ~390° roll; it lands ~20° over-rotated in the test.
 
+## M8 decisions (game feel, catch, steering, detailed map)
+
+- "Feel like True Skate / Touchgrind" (user request): gravity_multiplier 0.4, 10-tick finger
+  window, 0.07 s foot response, foot_max_speed 3.5 (sharper flicks pop more), pop gain 2.6
+  (~39 mm ollies), rolling_resistance 0.06 (carries speed), angular_damp 1.5, snappier camera.
+  Side flicks: gain 16 / cap 16 (flip ≈ 320°); 22 overshoots into half-flips.
+- **Steering** (the user asked): `Board._update_lean` — lean = Σ F·x of the feet, normalised by
+  lean_full_weights at the rail, smoothed by lean_response; `WheelPhysics` turns front and rear
+  wheels opposite ways by lean · max_steer_deg · steer_sensitivity. Fingers toward a rail = carve.
+- **Catching** (`CatchPhysics`): a foot whose touch landed while the board was airborne
+  (`Finger.caught_in_air`) applies torques only — spin → (r × v_finger)/|r|² over
+  catch_hold_time (still finger stops spin; dragging adjusts), plus levelling deck-up → world-up
+  over catch_level_time when the grip faces up. Off once the board is supported.
+- Map: `tools/add_plaza_details.gd` (additive, idempotent): hubba, funbox, long ledge, red curb,
+  right bank, picnic table, trash cans, bollards, city buildings (building.gdshader), fence.
+  The in-line obstacles stay; with steering, the side spots are reachable now.
+- Board: tail/nose wear scraped through the graphic, worn grip on the tail, tapered hangers.
+
 ## Milestones
 
 - **M1 (done)**: project setup, ground, board, chase camera, finger→foot input, ollie via physics,
@@ -156,8 +174,9 @@ Follow these rules in every session. If a request conflicts with them, say so be
 - **M5 (done)**: lower gravity, side presses for flip attempts, clean pops, maximum board realism.
 - **M6 (done)**: grinds and slides (solid trucks, contact-impulse friction, in-line rail + ledge).
 - **M7 (done)**: portrait mode.
-- Steering is still not built — ask before adding it. Flip tricks come only from the general
-  press physics; never add trick-specific code.
+- **M8 (done)**: True Skate-style feel, catching/adjusting in the air, steering, detailed map.
+- Flip tricks, catches and turns come only from the general finger physics; never add
+  trick-specific code.
 
 ## Testing
 

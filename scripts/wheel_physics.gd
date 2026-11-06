@@ -17,13 +17,20 @@ class_name WheelPhysics
 extends RefCounted
 
 
+##   - Steering: `lean` (−1 … 1, + = leaning right) turns the trucks. A skateboard's trucks turn
+##     into the lean, the front and rear in opposite directions, so the board carves:
+##         steer δ = lean · max_steer · sensitivity
+##         front wheels roll toward  nose + right·tan δ,   rear wheels toward  nose − right·tan δ
+##     The sideways grip above then works along each wheel's new axle, which turns the board.
+##
 ## `wheel_contacts`: offsets (global orientation, from body origin) of grounded wheel contacts.
-static func apply(state: PhysicsDirectBodyState3D, wheel_contacts: Array[Vector3], t: BoardTuning) -> void:
+static func apply(state: PhysicsDirectBodyState3D, wheel_contacts: Array[Vector3], t: BoardTuning,
+		lean: float = 0.0) -> void:
 	if wheel_contacts.is_empty():
 		return
 	var basis := state.transform.basis
-	var axle_dir := basis.x                 # sideways (along the axles)
-	var roll_dir := -basis.z                # toward the nose
+	var to_local := basis.inverse()
+	var tan_steer := tan(deg_to_rad(t.max_steer_deg * t.steer_sensitivity) * clampf(lean, -1.0, 1.0))
 	var m_share := t.mass_kg() / wheel_contacts.size()
 	var dt := state.step
 	# Only the yaw part of the spin moves a wheel across the ground. On a real board the deck
@@ -33,6 +40,10 @@ static func apply(state: PhysicsDirectBodyState3D, wheel_contacts: Array[Vector3
 	var up := basis.y
 	var w_yaw := up * state.angular_velocity.dot(up)
 	for r in wheel_contacts:
+		# This wheel's truck: front (−Z, nose side) or rear. They steer opposite ways.
+		var front := (to_local * r).z < 0.0
+		var roll_dir := (-basis.z + basis.x * (tan_steer if front else -tan_steer)).normalized()
+		var axle_dir := roll_dir.cross(basis.y)          # sideways for this wheel
 		# Ground velocity of the wheel: v = v_cm + ω_yaw × (r − r_cm).
 		var v := state.linear_velocity + w_yaw.cross(r - state.center_of_mass)
 		var v_lat := v.dot(axle_dir)

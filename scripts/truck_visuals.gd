@@ -127,7 +127,18 @@ static func _truck(body: Node3D, g: BoardGeometry, side: float, axle_z: float, p
 	body_mesh.position = Vector3(0, g.wheel_y, axle_z)
 	body.add_child(body_mesh)
 	var along_x := Basis(Vector3.FORWARD, PI * 0.5)          # cylinder Y axis → X axis
-	_cyl(body, r * 0.3, reach * 2.0, 16, Vector3(0, g.wheel_y, axle_z), along_x, mats.metal)  # housing
+	# Axle housing: thick at the centre, tapering toward each wheel, like a real hanger.
+	for sx in [-1.0, 1.0]:
+		var cone := CylinderMesh.new()
+		cone.top_radius = r * 0.36 if sx < 0.0 else r * 0.22    # CylinderMesh "top" = +Y = +X here
+		cone.bottom_radius = r * 0.22 if sx < 0.0 else r * 0.36
+		cone.height = reach
+		cone.radial_segments = 16
+		var cm := MeshInstance3D.new()
+		cm.mesh = cone
+		cm.material_override = mats.metal
+		cm.transform = Transform3D(along_x, Vector3(sx * reach * 0.5, g.wheel_y, axle_z))
+		body.add_child(cm)
 	# Pivot cup where the hanger's pivot arm meets the baseplate.
 	_cyl(body, r * 0.22, r * 0.3, 12, Vector3(0, plate_bottom - r * 0.1, plate_z - dz * 0.1),
 			Basis.IDENTITY, mats.bushing)

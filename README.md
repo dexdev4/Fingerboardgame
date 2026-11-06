@@ -14,6 +14,10 @@ bushings, washers and axle nuts, lipped wheels with bearings).
 that edge, so flip tricks can come out of the physics; the most realistic board yet (curved
 kicks, bumpy grip, wood grain, Phillips bolts, rounded baseplates, a printed wordmark), 4×
 anti-aliasing and film-like colour.
+**Milestone 8:** game feel closer to True Skate / Touchgrind (snappier, rewards sharp flicks,
+carries speed); **steering** (lean the trucks); **catching** the board in the air and adjusting
+it; a much more detailed plaza (hubba, funbox, long ledge, red curb, bank, picnic table, city
+blocks); board wear details.
 **Milestone 7:** portrait mode — hold the phone upright; the board runs up the screen with the
 run ahead visible above it and room either side to push.
 **Milestone 6:** grinds and slides — solid trucks that lock onto rails and ledge edges, real
@@ -57,6 +61,13 @@ tenth of a second) pops as well as a sharp flick, and flicking faster gives almo
 (`foot_max_speed`). Gravity is lowered (`gravity_multiplier`), so the board hangs in the air.
 
 Tip: start the front-foot slide just after the tail snap.
+
+**Turning:** slide your fingers toward one side of the board — weight off the centre line leans
+the trucks and the board carves that way (`steer_sensitivity` in `board_tuning.tres`).
+
+**Catching:** after popping, lift a finger and put it back on the board while it's in the air.
+That finger catches the board: holding it still stops the spin and presses the board level;
+dragging it rotates the board so you can line it up before landing.
 
 **Grinds and slides:** ollie onto the in-line flat bar (after the manual pad) or the in-line
 ledge (after the low wall). Land with the **trucks** on it for a 50-50 / 5-0 / nosegrind, or
@@ -141,6 +152,7 @@ scenes/main.tscn          park, board, camera, input, overlay
 scenes/skatepark.tscn     the park (sky, sun, ground, obstacles, scenery, Spawn marker)
 tools/build_park.gd       generates skatepark.tscn (overwrites it — careful)
 tools/add_grind_spots.gd  adds the in-line grind spots + slickness tags (keeps your edits)
+tools/add_plaza_details.gd adds the hubba, funbox, ledges, curb, furniture, city (keeps edits)
 tuning/board_tuning.tres  all tuning values (script: scripts/board_tuning.gd)
 scripts/
   main.gd                 wires everything from the tuning resource
@@ -151,6 +163,7 @@ scripts/
   truck_visuals.gd        trucks, hardware and wheels
   deck_friction.gd        grip/edge friction when the board lands upside down or on its side
   slide_friction.gd       grind/slide friction for trucks and the deck underside
+  catch_physics.gd        catching / adjusting the board with a finger in the air
   mesh_util.gd            mesh helpers (lathe, prisms, materials)
   finger.gd               one touch: role, screen/board position and velocity
   finger_input.gd         touches → feet/push fingers, measured in board space each tick

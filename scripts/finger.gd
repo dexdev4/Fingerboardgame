@@ -9,6 +9,8 @@ enum Role { NONE, BACK_FOOT, FRONT_FOOT, PUSH, IGNORED }
 
 var touch_index: int
 var role: Role = Role.NONE
+## This touch landed on the board while the board was in the air: it's a CATCH (see CatchPhysics).
+var caught_in_air := false
 
 ## Latest screen position (pixels). Updated by input events, sampled once per physics tick.
 var screen_pos: Vector2

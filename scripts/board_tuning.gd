@@ -11,7 +11,7 @@ extends Resource
 @export var world_scale: float = 10.0
 ## 1.0 = real gravity (9.81 m/s² scaled to world units). Lower = floatier: longer hang time,
 ## slower falls. 0.3 gives the slow, floaty feel (M3); raise toward 1.0 for snappy realism.
-@export var gravity_multiplier: float = 0.25
+@export var gravity_multiplier: float = 0.4
 ## Fixed physics rate. Higher = more stable contacts, more CPU. Keep a multiple of 60.
 @export var physics_ticks_per_second: int = 120
 
@@ -60,13 +60,13 @@ extends Resource
 ## Air drag on linear motion (1/s). Fingerboards are light, so a little drag matters.
 @export var linear_damp: float = 0.02
 ## Damping of spin (1/s). Higher = board stops rotating sooner in the air.
-@export var angular_damp: float = 2.5
+@export var angular_damp: float = 1.5
 
 @export_group("Wheels")
 ## How fast sideways sliding of a grounded wheel is cancelled (1/s). Keep < ticks/s.
 @export var wheel_lateral_grip: float = 40.0
 ## Constant rolling deceleration from bearings/wheels (units/s²).
-@export var rolling_resistance: float = 0.12
+@export var rolling_resistance: float = 0.06
 ## Truck bushings + wheel urethane soaking up landings: while 3+ wheels are down, the board's
 ## pitch/roll spin and its bounce along the deck's up axis are damped at this rate (1/s).
 ## Higher = landings "stick" and feel heavier; 0 = a hard plastic toy. Keep < ticks/s.
@@ -78,6 +78,29 @@ extends Resource
 @export var deck_friction_mu: float = 0.9
 ## How quickly that friction stops sliding (1/s, mass-normalised). Keep < ticks/s.
 @export var deck_stick_rate: float = 40.0
+
+@export_group("Steering (truck lean)")
+## Real trucks steer when the deck leans: weight off the centre line (fingers toward a rail)
+## leans the deck, and both trucks turn into the lean. Lean is normalised: 1 = this many board
+## weights pressing right at the rail.
+@export var lean_full_weights: float = 0.2
+## Wheel steer angle at full lean (degrees) before sensitivity. Front and rear turn opposite ways.
+@export var max_steer_deg: float = 14.0
+## Multiplies the steer angle. THE turning sensitivity knob.
+@export var steer_sensitivity: float = 1.4
+## How quickly the bushings follow your weight shift (1/s). Higher = snappier turning.
+@export var lean_response: float = 10.0
+
+@export_group("Catching in the air")
+## Put a finger on the board while it's in the air to catch it. The catching finger damps the
+## board's spin toward what the finger is doing over this time (s): hold still = stop the spin,
+## drag = rotate the board (adjust it before landing). Keep ≥ 2 ticks.
+@export var catch_hold_time: float = 0.06
+## ...and presses it level (deck up → world up) over this time (s), like a flat foot.
+@export var catch_level_time: float = 0.15
+## Only levels when the grip faces up at least this much (deck up · world up): you can't catch
+## a board that's upside down by touching its bottom.
+@export var catch_min_up: float = 0.2
 
 @export_group("Grinds and slides")
 ## Friction of the metal trucks sliding on things (50-50s, 5-0s, nosegrinds). Steel on steel or
@@ -96,13 +119,13 @@ extends Resource
 ## moves the finger past the tip on screen while, in "real life", it is still on the kick.
 @export var foot_end_margin_mm: float = 30.0
 ## Finger velocity is measured across this many physics ticks (smooths 60 Hz touch input).
-@export var finger_velocity_ticks: int = 16
+@export var finger_velocity_ticks: int = 10
 ## Downward force of a resting finger while the board is on its wheels, in board weights.
 @export var foot_rest_weight: float = 0.25
 ## How fast a pressing finger drives its point of the deck down (units/s) per unit of
 ## press speed (screen units/s; 1 unit = the screen's short side). Press speed = finger speed on screen toward the end of the
 ## board nearest that finger. THE main "pop strength" knob.
-@export var press_speed_gain: float = 3.2
+@export var press_speed_gain: float = 2.6
 ## Press only works on the outer part of the board, where the kicks rise: it fades in from
 ## this distance from the centre (mm) to full strength at the kick bend. Default sits just
 ## inside the bolts, so a front foot slides freely until it reaches the front bolts.
@@ -110,15 +133,15 @@ extends Resource
 ## Top speed a foot can move the deck at (units/s) — both pressing it down and dragging it
 ## along the grip. Above this, flicking harder does nothing more: slow, deliberate fingers
 ## get the full effect and the board's reactions stay smooth however fast you flick.
-@export var foot_max_speed: float = 2.8
+@export var foot_max_speed: float = 3.5
 ## Side presses: a finger driven toward the nearest RAIL (side edge) presses that edge, because
 ## the concave rises toward the rails just like the kicks rise toward the ends. Strength relative
 ## to end presses (0 = off). On the ground the wheels stop the board rolling; in the air it rolls
 ## (flip tricks: pop, then flick the front finger off the side).
-@export var press_side_gain: float = 10.0
+@export var press_side_gain: float = 16.0
 ## Top speed a side press can drive the rail at (units/s). Separate from foot_max_speed so
 ## flips can come round in one hang time while ollies keep the slow, smooth feel.
-@export var press_side_max_speed: float = 12.0
+@export var press_side_max_speed: float = 16.0
 ## Response time for side presses (s). A flick off the side touches the rail only briefly, so
 ## it needs a quicker foot than the smooth ollie press (press_response_time). Keep ≥ 2 ticks.
 @export var press_side_response_time: float = 0.03
@@ -132,7 +155,7 @@ extends Resource
 @export var press_deadzone: float = 0.15
 ## How quickly a foot gets its point of the deck up to speed (s). Smaller = snappier, harder
 ## feet. Keep ≥ 2 physics ticks (0.017 s at 120 Hz) for stability.
-@export var press_response_time: float = 0.12
+@export var press_response_time: float = 0.07
 ## Upper limit for one finger's press force, in board weights.
 @export var press_max_weights: float = 10.0
 ## How strongly a sliding finger drags the grip tape (1/s, mass-normalised).
@@ -166,9 +189,9 @@ extends Resource
 ## The camera aims this far ahead of the board.
 @export var camera_look_ahead: float = 0.35
 ## How quickly the camera catches up with the board (1/s).
-@export var camera_follow: float = 3.0
+@export var camera_follow: float = 5.0
 ## How quickly the camera swings round to the board's heading (1/s).
-@export var camera_turn_follow: float = 1.5
+@export var camera_turn_follow: float = 2.5
 
 @export_group("Haptics")
 @export var haptics_enabled: bool = true

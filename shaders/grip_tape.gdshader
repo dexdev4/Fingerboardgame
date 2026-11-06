@@ -24,6 +24,8 @@ void fragment() {
 	float grit = hash(cell);
 	float edge = min(UV.y, 1.0 - UV.y);
 	float worn = 1.0 - smoothstep(0.0, worn_width, edge);
+	// Worn patch on the tail where the back foot pops (UV.x: 0 = nose, 1 = tail).
+	worn = max(worn, smoothstep(0.84, 0.95, UV.x) * 0.45 * (1.0 - smoothstep(0.2, 0.5, abs(UV.y - 0.5))));
 	worn *= 0.6 + 0.4 * hash(floor(vec2(UV.x * 120.0, 0.0)));   // patchy, not a perfect stripe
 	ALBEDO = mix(grip_color * (0.75 + 0.5 * grit), worn_color, worn * 0.8);
 	ROUGHNESS = mix(0.75 + 0.25 * grit, 0.6, worn);

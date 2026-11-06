@@ -19,6 +19,8 @@ var spawn_xf: Transform3D
 
 # Read by the debug overlay.
 var wheels_down := 0
+## Current truck lean (−1 … 1, + = right), from finger weight off the centre line.
+var lean := 0.0
 ## Truck hangers touching something this tick (grinding).
 var truck_contacts := 0
 ## Deck underside / kick contacts sliding on something this tick (slides, or a kick on the ground).
@@ -136,13 +138,16 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	# --- Forces. ---
 	# Resting on anything (wheels, or trucks/deck on a rail or ledge) = fingers have weight on it.
 	var supported := wheels_down > 0 or not deck_contacts.is_empty()
-	input.physics_update(state.transform, state.get_space_state(), dt)
+	input.physics_update(state.transform, state.get_space_state(), dt, not supported)
 	for f in input.feet():
 		# Is the kick at this foot's end already on the ground? Then it can't be pushed further.
 		var end_down := kick_hits.has("tail" if f.local_pos.z > 0.0 else "nose")
 		FootPhysics.apply(state, f, geo, tuning, wheels_down > 0, supported, end_down)
+	if not supported:
+		CatchPhysics.apply(state, input.catchers(), tuning)
 	PushPhysics.apply(state, input.pushers(), wheels_down, tuning)
-	WheelPhysics.apply(state, wheel_contacts, tuning)
+	_update_lean(dt)
+	WheelPhysics.apply(state, wheel_contacts, tuning, lean)
 	DeckFriction.apply(state, deck_contacts, geo, tuning)
 	var sliding := SlideFriction.apply(state, deck_contacts, geo, tuning)
 	truck_contacts = sliding.x
@@ -159,6 +164,20 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 
 	_prev_lin = state.linear_velocity
 	_prev_ang = state.angular_velocity
+
+
+## Truck lean from where the fingers press: lean moment M = Σ F_i · x_i (board-local x, + = right
+## rail). Normalised by "lean_full_weights board weights at the rail", then the bushings follow it
+## smoothly: lean += (target − lean)·(1 − e^(−response·dt)). Fingers toward the right rail → lean
+## right → the trucks turn right.
+func _update_lean(dt: float) -> void:
+	var moment := 0.0
+	for f in input.feet():
+		if f.on_board:
+			moment += f.press_force * f.local_pos.x
+	var full := tuning.board_weight() * tuning.lean_full_weights * geo.half_width
+	var target := clampf(moment / maxf(full, 1e-6), -1.0, 1.0) if wheels_down > 0 else 0.0
+	lean += (target - lean) * (1.0 - exp(-tuning.lean_response * dt))
 
 
 ## A kick just hit the ground. The engine's contact is perfectly dead (it already zeroed the
@@ -200,6 +219,7 @@ func _do_reset(state: PhysicsDirectBodyState3D) -> void:
 	ground_y = spawn_xf.origin.y - geo.rest_height - 0.002
 	_kicks_touching.clear()
 	_air_time = 0.0
+	lean = 0.0
 	input.clear()
 	reset_done.emit()
 

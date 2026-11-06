@@ -29,6 +29,12 @@ void fragment() {
 		// Logo: a ring in the middle (stretched to stay round on the long, thin deck).
 		float r = length((p - 0.5) * vec2(3.4, 1.0));
 		col = mix(col, graphic_b, step(0.22, r) * step(r, 0.32));
+		// Tail/nose wear: every pop scrapes the tips on the ground, so near the ends the print
+		// is scratched through to the maple — streaky along the board, heavier at the very tip.
+		float tip = max(smoothstep(0.86, 0.99, p.x), smoothstep(0.14, 0.01, p.x));
+		float scratch = fract(sin(dot(floor(vec2(p.x * 260.0, p.y * 40.0)), vec2(12.9898, 78.233))) * 43758.5453);
+		float worn = clamp(tip * 1.4 - scratch * 0.6, 0.0, 1.0);
+		col = mix(col, maple * 0.9, worn);
 		ALBEDO = col;
 	}
 	ROUGHNESS = 0.6;
