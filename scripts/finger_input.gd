@@ -47,6 +47,15 @@ func feet() -> Array[Finger]:
 	return out
 
 
+## Feet that landed on the board while it was airborne (catches), and are on the board now.
+func catchers() -> Array[Finger]:
+	var out: Array[Finger] = []
+	for f in feet():
+		if f.caught_in_air and f.on_board:
+			out.append(f)
+	return out
+
+
 func pushers() -> Array[Finger]:
 	var out: Array[Finger] = []
 	for f: Finger in fingers.values():
@@ -56,7 +65,8 @@ func pushers() -> Array[Finger]:
 
 
 ## Called by the board once per physics tick, with the board's current transform.
-func physics_update(board_xf: Transform3D, space: PhysicsDirectSpaceState3D, dt: float) -> void:
+## `airborne`: the board isn't resting on anything this tick (fingers landing now are catches).
+func physics_update(board_xf: Transform3D, space: PhysicsDirectSpaceState3D, dt: float, airborne: bool = false) -> void:
 	var size := camera.get_viewport().get_visible_rect().size
 	# Iterate in touch-index order so results never depend on dictionary ordering.
 	var keys := fingers.keys()
@@ -66,6 +76,7 @@ func physics_update(board_xf: Transform3D, space: PhysicsDirectSpaceState3D, dt:
 		f.sample(tuning.finger_velocity_ticks, dt)
 		if f.role == Finger.Role.NONE:
 			_assign_role(f, board_xf, space, size)
+			f.caught_in_air = airborne and (f.role == Finger.Role.BACK_FOOT or f.role == Finger.Role.FRONT_FOOT)
 		match f.role:
 			Finger.Role.BACK_FOOT, Finger.Role.FRONT_FOOT:
 				_update_foot(f, board_xf, size, dt)
@@ -84,13 +95,23 @@ func _assign_role(f: Finger, board_xf: Transform3D, space: PhysicsDirectSpaceSta
 		local_z = (board_xf.affine_inverse() * hit.position).z
 	else:
 		# The board is thin and often seen edge-on, so also accept touches that land on the
-		# deck plane within the catch margin.
+		# deck plane NEAR the board — a forgiving landing margin (foot_assign_margin_mm), wider
+		# than the margin for staying on, so placing a finger is easy but flicks still leave.
 		var lp = _deck_point(r, board_xf)
-		if lp != null and _within_deck(lp):
+		var m := tuning.mm(tuning.foot_assign_margin_mm)
+		if lp != null and absf(lp.x) <= geo.half_width + m and absf(lp.z) <= geo.half_length + m:
 			local_z = lp.z
 	if local_z != null:
 		var want := Finger.Role.BACK_FOOT if local_z > tuning.mm(tuning.foot_split_mm) else Finger.Role.FRONT_FOOT
-		f.role = Finger.Role.IGNORED if _role_taken(want) else want
+		var other := Finger.Role.FRONT_FOOT if want == Finger.Role.BACK_FOOT else Finger.Role.BACK_FOOT
+		# You only have two feet: if the half you touched already has a foot, this finger is the
+		# other foot (e.g. a second finger landing a little behind the middle is still the front).
+		if not _role_taken(want):
+			f.role = want
+		elif not _role_taken(other):
+			f.role = other
+		else:
+			f.role = Finger.Role.IGNORED
 		return
 	# Anything else the ray hits is ground (floor, steps, ledges...). If it hits nothing, use
 	# the level the board is standing on.
@@ -141,7 +162,8 @@ func _update_foot(f: Finger, board_xf: Transform3D, size: Vector2, dt: float) ->
 		f.local_vel = Vector3.ZERO
 
 	# Press speed: finger speed on screen toward the board end nearest to it, in screen
-	# heights per second (resolution independent). For the back foot that end is the tail
+	# units per second (one unit = the screen's SHORT side, so it's resolution independent and
+	# a 1 cm flick means the same in portrait and landscape). For the back foot that end is the tail
 	# (a flick down the screen); for the front foot it's the nose (a drag up toward the nose).
 	var end := geo.tail_tip() if lp.z > 0.0 else geo.nose_tip()
 	var p_c = ScreenMath.project(camera, size, board_xf.origin)
@@ -149,7 +171,17 @@ func _update_foot(f: Finger, board_xf: Transform3D, size: Vector2, dt: float) ->
 	var dir := Vector2.DOWN if lp.z > 0.0 else Vector2.UP
 	if p_c != null and p_e != null and p_c.distance_to(p_e) > 2.0:
 		dir = (p_e - p_c).normalized()
-	f.press_speed = f.screen_vel.dot(dir) / size.y
+	# × flick_sensitivity (pause menu): how much a given finger speed counts as a press.
+	f.press_speed = f.screen_vel.dot(dir) / _screen_unit(size) * tuning.flick_sensitivity
+
+	# Side press speed: the same idea across the board. The concave rises toward the rails, so
+	# a finger driven toward the nearest side edge presses that edge (flip-trick flicks).
+	var side := 1.0 if lp.x >= 0.0 else -1.0
+	var p_mid = ScreenMath.project(camera, size, board_xf * Vector3(0.0, 0.0, lp.z))
+	var p_rail = ScreenMath.project(camera, size, board_xf * Vector3(side * geo.half_width, 0.0, lp.z))
+	f.press_speed_side = 0.0
+	if p_mid != null and p_rail != null and p_mid.distance_to(p_rail) > 2.0:
+		f.press_speed_side = f.screen_vel.dot((p_rail - p_mid).normalized()) / _screen_unit(size) * tuning.flick_sensitivity
 
 
 ## Measure a push finger: its velocity across the ground plane (units/s).
@@ -171,3 +203,9 @@ func _deck_point(r: Array, board_xf: Transform3D) -> Variant:
 func _within_deck(lp: Vector3) -> bool:
 	return absf(lp.x) <= geo.half_width + tuning.mm(tuning.foot_catch_margin_mm) \
 			and absf(lp.z) <= geo.half_length + tuning.mm(tuning.foot_end_margin_mm)
+
+
+## One "screen unit" = the screen's short side in pixels. Finger speeds are measured in these, so
+## the same physical flick gives the same press whether the phone is upright or sideways.
+static func _screen_unit(size: Vector2) -> float:
+	return minf(size.x, size.y)

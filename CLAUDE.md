@@ -28,7 +28,8 @@ Follow these rules in every session. If a request conflicts with them, say so be
    scripts — add an `@export` field to `BoardTuning` instead, with a comment and units.
 5. **Failure is physical.** If a finger leaves the board, or doesn't follow through, the trick
    fails because the forces stop — never because a rule says "fail".
-6. **Target**: Android phones, landscape, 60 fps minimum, multitouch.
+6. **Target**: Android phones, **portrait** (held upright — the user's choice in M7), 60 fps
+   minimum, multitouch.
 7. **Code style**: small, single-purpose scripts; comment everything; explain any physics math
    (units, sign conventions, why) in comments next to the code.
 
@@ -73,15 +74,229 @@ Follow these rules in every session. If a request conflicts with them, say so be
 - Heavy-feel defaults were chosen with the test's feel metrics (sustained spin, settle ticks,
   bounces, coast, yaw drift), comparing against the M1 values.
 
+## M3 decisions (slow, smooth, floaty controls — the user's chosen feel)
+
+- Feel is driven by tuning: gravity_multiplier 0.3 (long hang time), 12-tick finger velocity
+  window, slow foot response (0.09 s), lower force cap, more air spin damping, lazier camera.
+- `foot_max_speed` caps both the press target and the grip-drag slip speed, so fast flicks give
+  (almost) nothing extra — slow, deliberate fingers get the full effect.
+- Lower gravity must come with lower pop speed/rotation (gain 2.4, restitution 0.6); higher gains
+  made the board go vertical and flip during the long hang time.
+- Test finger timings are constants at the top of tests/test_ollie.gd (slow, deliberate inputs).
+
+## M4 decisions (smoother, bail friction, realism)
+
+- Smoother tuning: 16-tick finger window, 0.12 s foot response, angular_damp 2.5, gentler camera;
+  pop gain raised to 2.8 / foot_max_speed 2.5 to keep ~28 mm ollies.
+- `DeckFriction`: Coulomb friction (deck_friction_mu, deck_stick_rate) only for contacts on the
+  board's top or sides (contact normal · deck up < 0.34). Underside contacts (tail strike) stay
+  frictionless so ollies are unchanged. Normals are oriented toward the board's centre of mass.
+- `Board.request_reset(xf, lin, ang)` lets tests drop the board in any pose (still deterministic).
+- Visuals: deck in `BoardVisuals` (rounded ply edges, worn grip edge); trucks/hardware/wheels in
+  `TruckVisuals`. New classes need one `godot --headless --editor --quit` before headless tests,
+  or the test hangs on a parse error.
+
+## M5 decisions (lower gravity, intuitive tricks, max realism)
+
+- gravity_multiplier 0.25; pop gain 3.2 / foot_max_speed 2.8 (~52 mm ollies, 50-tick hang time).
+- **Side presses** (the user asked for trick responsiveness, so flip physics is now allowed): a
+  finger driven toward the nearest RAIL presses that edge (concave rises at the rails, like kicks
+  at the ends). Own gain/cap/response (press_side_*), quick 0.03 s response because a flick only
+  touches the rail briefly. On the ground the wheels hold the board; in the air it rolls.
+  Still no gesture recognition — it's the same press rule applied across the board.
+- **A foot can't press a kick that's already on the ground** (`end_down`): the long smoothing
+  window kept the back foot pressing after the tail struck, pinning the tail and levering the
+  board up onto it instead of popping. This fixed the floaty ollie (tail now leaves the ground).
+- DeckFriction picks contacts by POSITION on the deck (grip side / rail, not the bottom face),
+  not by normal angle — the angle test grabbed the tail during steep pops.
+- Flip attempt currently reaches ~270° of roll (3/4 kickflip) before landing; full flips need
+  more height/levelling. Test checks >90° peak roll and that straight ollies don't roll.
+- Visuals: smooth parabolic kick bends (kick_bend_mm), grip normal-map grains, wood grain,
+  domed silver bolts with Phillips slots, rounded baseplates, "PLAZA 96" wordmark (made-up
+  brand), 4x MSAA, AgX tonemap (exposure 1.25), 4-unit shadow distance for a crisp board shadow.
+
+## M6 decisions (grinds and slides)
+
+- Trucks are solid: a "truck" box per hanger, at axle height, between the wheels (BoardBuilder).
+- `SlideFriction`: Coulomb friction for every non-wheel, non-grip contact — μ = grind_mu (truck)
+  or slide_mu (deck underside/kicks) × the obstacle's `slide_friction_scale` meta (steel 0.6,
+  painted 0.8, concrete 1.0). N comes from the real contact impulse: |impulse · n| / dt (Jolt
+  reports impulses). Never more than what stops the slide this tick. No grind-specific code.
+- Contact normals: the board's centre of mass is BELOW the deck, so "orient toward the CoM" flips
+  deck-bottom normals — anything using a normal's sign must not rely on that (use |impulse · n|).
+- A resting finger has weight whenever the board is `supported` (wheels OR trucks/deck on
+  something), not just wheels — so fingers weigh the board down on a rail.
+- Park: `tools/add_grind_spots.gd` ADDS to the existing skatepark.tscn (idempotent, keeps user
+  edits): slickness tags on all obstacles, an in-line flat bar (LineRail, x = 0) and an in-line
+  ledge (LineLedge) whose coped edge is at x = −0.07 — a ledge 50-50 is only stable with the
+  board's centre over the ledge side of the edge (inside wheels on top, board tilted).
+- Side obstacles (ledge, flat bar, handrail) are reachable since steering was added in M8.
+
+## M7 decisions (portrait)
+
+- Orientation 1 (portrait), desktop window 540×960. Tests run in a 720×1280 SubViewport.
+- Finger speeds are measured in **screen units = the screen's SHORT side** (`_screen_unit`), not
+  screen height — so the same physical flick presses the same in portrait and landscape. Test
+  finger distances use the short side too.
+- Portrait camera: distance 1.15, height 0.8, fov 55 (vertical), look-ahead 0.35 — board in the
+  lower-middle at ~half the width, ground both sides for pushing, the run ahead in the top half.
+  The steeper view shows less ground per pixel, so push_speed_scale is 3.0.
+- Side presses also need the finger to really cross the deck toward the rail in board space
+  (`press_side_min_cross_speed`); a straight slide could pick up screen-space sideways motion.
+- Test roll metric ignores one-tick contact spikes (a single wheel landing first), like peak spin.
+- Flip attempt now reaches a full ~390° roll; it lands ~20° over-rotated in the test.
+
+## M8 decisions (game feel, catch, steering, detailed map)
+
+- "Feel like True Skate / Touchgrind" (user request): gravity_multiplier 0.4, 10-tick finger
+  window, 0.07 s foot response, foot_max_speed 3.5 (sharper flicks pop more), pop gain 2.6
+  (~39 mm ollies), rolling_resistance 0.06 (carries speed), angular_damp 1.5, snappier camera.
+  Side flicks: gain 16 / cap 16 (flip ≈ 320°); 22 overshoots into half-flips.
+- **Steering** (the user asked): `Board._update_lean` — lean = Σ F·x of the feet, normalised by
+  lean_full_weights at the rail, smoothed by lean_response; `WheelPhysics` turns front and rear
+  wheels opposite ways by lean · max_steer_deg · steer_sensitivity. Fingers toward a rail = carve.
+- **Catching** (`CatchPhysics`): a foot whose touch landed while the board was airborne
+  (`Finger.caught_in_air`) applies torques only — spin → (r × v_finger)/|r|² over
+  catch_hold_time (still finger stops spin; dragging adjusts), plus levelling deck-up → world-up
+  over catch_level_time when the grip faces up. Off once the board is supported.
+- Map: `tools/add_plaza_details.gd` (additive, idempotent): hubba, funbox, long ledge, red curb,
+  right bank, picnic table, trash cans, bollards, city buildings (building.gdshader), fence.
+  The in-line obstacles stay; with steering, the side spots are reachable now.
+- Board: tail/nose wear scraped through the graphic, worn grip on the tail, tapered hangers.
+
+## M9 decisions (predictable flips)
+
+- Flips need deliberate input: side presses have their own deadzone (press_side_deadzone 0.35,
+  above press_deadzone) and the finger must cross the deck toward the rail in board space.
+- **Predictability = a roll-rate ceiling**: once the board already rolls at press_side_max_roll
+  (36 rad/s) toward the flicked rail, the flick adds nothing. Normal and hard flicks both give
+  ~one kickflip (tests: soft 205°, normal 338°, hard 328°). Rejected attempts (see git history):
+  capping point speed (depends on finger position), a pure-torque flick (no nose levelling →
+  tail scrapes mid-flip), extra "flat foot" levelling (little effect).
+- The window for a flip is short (~0.17 s) because ollies pitch ~60° and the tail comes back
+  near the ground; tests use a quick 12-tick flick (FLIP_FLICK_TICKS), not the slow ollie slide.
+- Caught fingers don't flick (they catch/adjust). catch_adjust_gain 3 (a sole twists the board).
+- Scoop (`_scoop_spin`): a foot on the kick that last POPPED (`Board._popped_end`) sweeping
+  sideways spins the board about the WORLD vertical, capped at press_scoop_max_spin. KNOWN GAP:
+  in tests it adds some spin but doesn't reliably reach a 360 shove; the 360-flip spin check is
+  reported, not asserted. The flip half of a 360 flip works.
+- Test spin metric is about the world vertical; heading for catch-adjust is read at touchdown
+  (after landing, a finger off-centre steers the board).
+
+## M10 decisions (controllable ollies, easier second finger, bigger park)
+
+- **Phase-dependent press zone**: on the wheels a foot presses only from press_zone_start_mm
+  (15 mm — front foot stays light so the tail snaps); in the air from press_zone_start_air_mm
+  (6 mm) — the front finger levels the board as soon as it slides (as the board tips up toward
+  the camera, a finger on the bolts reads nearer the middle). Ollie with slide: 64° → 52° peak.
+- **Centre-line press**: nose/tail presses and resting weight act on the board's centre line
+  at the finger's z (a kick rises across the whole width) — a slightly off-centre front finger
+  no longer rolls the board (crooked slide: 122° → 8°). Only while the finger is FLICKING
+  (side push > 0) does the press act at the finger itself (M9 flip behaviour, unchanged).
+  Splitting the force into centre/finger shares, a headroom-limited cap, and a pure-torque flick
+  were all tried this round and made flips erratic — don't repeat without a new idea.
+- The popping foot doesn't flick (push_side = 0 on the kick that last popped).
+- Second finger: if the half you touch already has a foot, the touch becomes the other foot;
+  new touches count within foot_assign_margin_mm (10 mm) of the deck (staying-on margin stays
+  small so flicks still leave the board).
+- Park: `tools/expand_park.gd` (additive, idempotent): plaza extension (warmer concrete, 1.5 u
+  slabs), raised lip, 5-stair + handrail + hubba with a bank up, quarter pipe (trimesh; prism
+  caps fan from the BACK-BOTTOM corner — the only point that sees the whole curved solid),
+  kinked rail, manual pads, low bank, planters, glowing lamps, benches.
+- KNOWN GAP (closed in M11 for the spin): the 360 flip.
+
+## M11 decisions (the scoop)
+
+- **Shove axis**: a scoop drives spin about a = normalize(UP − (UP·Z)Z) (Z = deck long axis,
+  `FootPhysics.shove_axis`) — the axis that swings the long axis round horizontally. Driving the
+  plain world vertical was the 360-flip bug: mid-pop the board is pitched ~50°, so the kickflip's
+  roll has a big vertical component and the scoop spent its torque cancelling the flip.
+- Scoop torque = I_world · (a · Δω) / τ (full tensor) so it changes only the shove spin.
+- **Edge presses obey end_down too**: a kick on the ground can't be pressed, not even its rail.
+  A diagonal back-foot snap "flicked" the tail rail on the strike tick (before popped_end is
+  set): an off-centre spike that held the tail on the ground and rolled the board the wrong way.
+- Test spin metric uses the same shove axis (pure kickflips used to read ~170–240° of "spin").
+- Test 360 flip uses real footwork: scoop and flick go the SAME screen direction (both toward the
+  heel side; backside scoop + kickflip). Opposite directions is hardflip-like footwork: the
+  nose swings under the flicking finger.
+- Tried and rejected: "sticky" foot contacts (contact moves only by finger sliding, with a leash)
+  to stop the front finger's projected point drifting as the board tips. Airborne/z-only it was
+  harmless to ollies but broke kickflips (normal 422° landing on its side, soft 92°). Don't repeat.
+- (Closed in M13.) The flip half of the 360 flip (~135° roll, lands on its side). Not a force bug:
+  torque-free motion of a spinning plate (Euler: pitch' ≈ shove·roll, roll' ≈ −pitch·shove)
+  turns the roll into pitch while the board shoves round in the short hang time. Lower scoop caps
+  (10, 13) trade spin for roll but still don't land it.
+
+## M12 decisions (pause menu and player settings)
+
+- `PauseMenu` (CanvasLayer, PROCESS_MODE_ALWAYS): SceneTree.paused freezes physics; pausing and
+  resuming call `input.clear()` (fingers lifted). The pause button is in `ui_blockers`.
+  Back button toggles pause (quit_on_go_back = false); leaving the app pauses (mobile only).
+- `GameSettings` sits ON TOP of the tuning: defaults are read from a fresh (uncached) load of
+  board_tuning.tres; apply() writes the player's values into the live tuning (flip speed scales
+  press_side_max_roll / press_side_max_speed / press_scoop_max_spin; flick sensitivity →
+  `flick_sensitivity`, which multiplies press_speed and press_speed_side in FingerInput; gravity
+  → gravity_multiplier + the world's gravity; camera_* absolute). Slider ranges: menu_* fields.
+- **Game speed keeps determinism**: Godot steps physics by (1/ticks)·time_scale, so we set
+  ticks = 120·speed AND time_scale = ticks/120 — every step stays exactly 1/120 s, only fewer per
+  real second. Never use time_scale alone (it shrinks dt and changes the physics). Test 19 checks
+  a half-speed ollie is identical to scenario 0. Fingers aren't scaled: in slow motion a real
+  flick spans fewer ticks and reads faster (the player is "faster than the world").
+- Camera: camera_orbit_deg swings the camera round the board (+ = board's right),
+  camera_aim_height tilts the aim point. Both 0 = the M7 view exactly.
+- Tests set `main.use_player_settings = false` so a saved settings file can't change results.
+
+## M13 decisions (flatter, more even pops)
+
+- Why pops went vertical: a fingerboard's tail sits ~16 mm up and 21 mm behind the rear axle, so
+  tipping on the rear wheels it only strikes at ~45–48° (geometry; kept). The old bounce
+  (tail_restitution 0.6) left the board still rotating nose-up (→ 75° without a slide) with
+  little lift (33 mm).
+- **Snapped pops** (`Board._foot_snapping`): a kick strike counts as a snap only when the board
+  is on its wheels AND a foot on that end pressed > pop_snap_min_weights the tick before
+  (`Finger.last_press_force`; on the strike tick the press is already off). A snap adds
+  pop_snap_restitution (1.5) to the bounce: the tail tip rebounds harder, which both lifts the
+  board and tips the nose back down. Ollies: 52 mm (was 33); no slide stays tilted ~47° instead
+  of rotating to 75°; the front slide still levels it (descent pitch −8° vs 19°).
+  Landings and mid-air tail scrapes keep plain tail_restitution (no superball re-pops).
+- Tried and rejected: applying part of the bounce through the centre of mass instead of at the
+  tail (pop_lift_share) — it REMOVED the nose-down part of the bounce and made pops more
+  vertical. pop_snap_lift (extra central lift) exists but is 0: it lengthened hang time and threw
+  off the kickflip calibration (soft flicks out-flipped normal ones).
+- Scoop: press_scoop_gain 4 → 8 (the flatter pop needs a stronger scoop for the same shove), and
+  a foot only scoops while the grip faces up (press_scoop_min_upright 0.5): mid-flip, a still
+  finger over the rolling deck read as a reverse scoop and undid the shove.
+- Results: kickflips soft 377° / normal 386° / hard 393°; 360 flip 411° flip + 221° shove,
+  lands on its wheels (no longer a known gap, asserted); pop shove-it (front foot lifted) 167°.
+- Test metrics: "front slide levels" and the catch use the pitch on the way down / mean spin
+  after the catch (snapped pops no longer over-rotate). ONLY=0,1,... runs selected scenarios.
+
 ## Milestones
 
 - **M1 (done)**: project setup, ground, board, chase camera, finger→foot input, ollie via physics,
   pushing, debug overlay, haptics.
 - **M2 (done)**: outdoor street skatepark, realistic board model, heavier board feel.
-- Do **not** build kickflips, steering or other tricks until the user asks for the next milestone.
+- **M3 (done)**: slower inputs, smoother/slower board reactions, floaty feel.
+- **M4 (done)**: smoother still, high friction for upside-down/side landings, more realistic board.
+- **M5 (done)**: lower gravity, side presses for flip attempts, clean pops, maximum board realism.
+- **M6 (done)**: grinds and slides (solid trucks, contact-impulse friction, in-line rail + ledge).
+- **M7 (done)**: portrait mode.
+- **M8 (done)**: True Skate-style feel, catching/adjusting in the air, steering, detailed map.
+- **M9 (done, partial)**: predictable kickflips (more input needed, one flip however hard).
+  360 flip: flip works, the shove-it spin is a known gap.
+- **M10 (done, partial)**: flatter, more controllable ollies; easier second-finger placement;
+  bigger, more polished park. 360 flip still a known gap.
+- **M11 (done, partial)**: the scoop works (shove-it spin ~170–310°, asserted); it no longer
+  cancels the front flick. The 360 flip's flip half is still a known gap (lands on its side).
+- **M12 (done)**: pause menu with game speed, flip speed, flick sensitivity, gravity and camera
+  position/angle settings (saved on the device).
+- **M13 (done)**: flatter, higher, more even pops from a tail snap; the 360 flip lands.
+- Flip tricks, catches and turns come only from the general finger physics; never add
+  trick-specific code.
 
 ## Testing
 
 - Headless physics tests: `godot --headless --path . -s res://tests/test_ollie.gd`
   (simulates touch input: ollie, pushes, determinism, ollie down the stairs; prints feel
-  metrics). Run after physics changes. `TRACE=<scenario>` prints a per-tick trace.
+  metrics). Run after physics changes. `TRACE=<scenario>` prints a per-tick trace;
+  `ONLY=0,1,6` runs just those scenarios.

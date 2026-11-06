@@ -1,5 +1,5 @@
 ; Engine configuration file.
-; Godot 4.5+. Android, landscape, multitouch, Jolt physics at a fixed 120 Hz.
+; Godot 4.5+. Android, portrait, multitouch, Jolt physics at a fixed 120 Hz.
 
 config_version=5
 
@@ -13,10 +13,10 @@ config/icon="res://icon.svg"
 
 [display]
 
-window/size/viewport_width=1280
-window/size/viewport_height=720
-; 4 = sensor landscape: landscape, either way up.
-window/handheld/orientation=4
+window/size/viewport_width=540
+window/size/viewport_height=960
+; 1 = portrait (held upright). The board runs up the screen: more room along it for fingers.
+window/handheld/orientation=1
 window/energy_saving/keep_screen_on=true
 
 [input_devices]
@@ -44,4 +44,5 @@ jolt_physics_3d/limits/max_angular_velocity=300.0
 renderer/rendering_method="mobile"
 renderer/rendering_method.mobile="mobile"
 textures/vram_compression/import_etc2_astc=true
-anti_aliasing/quality/msaa_3d=1
+; 4x MSAA: the deck is thin, so its edges shimmer badly without it.
+anti_aliasing/quality/msaa_3d=2

@@ -6,6 +6,35 @@ finger forces acting on a physics board.
 
 **Milestone 1:** board, ground, chase camera, two-finger feet, ollie, pushing, debug overlay, haptics.
 **Milestone 2:** outdoor street skatepark, realistic board model, heavier and more realistic board feel.
+**Milestone 3:** slow, smooth, floaty controls: deliberate finger movements, lazy rotations, long hang time.
+**Milestone 4:** even smoother reactions; a board that lands upside down or on its side grips the
+ground and stops; more realistic board (rounded ply edges, worn grip, riser pads, kingpin and
+bushings, washers and axle nuts, lipped wheels with bearings).
+**Milestone 5:** lower gravity; cleaner pops; flicking a finger off the side of the board presses
+that edge, so flip tricks can come out of the physics; the most realistic board yet (curved
+kicks, bumpy grip, wood grain, Phillips bolts, rounded baseplates, a printed wordmark), 4×
+anti-aliasing and film-like colour.
+**Milestone 10:** flatter, more controllable ollies (the front finger levels the board in the
+air; a crooked slide no longer rolls it); the second finger is easier to place (it always
+becomes the other foot, and touches just off the board count); a bigger plaza with a 5-stair
+(handrail + hubba), a quarter pipe, a kinked rail, manual pads, a bank, planters and lamps.
+**Milestone 11:** the scoop: sweeping the back foot sideways along the tail as you pop spins the
+board round (shove-it), and it no longer cancels a front-foot flick. The 360 flip's flip half is
+still being worked on (it comes down on its side).
+**Milestone 12:** pause menu (II PAUSE, the phone's back button, or Esc) with settings: game
+speed (slow motion), board flip speed, flick sensitivity, gravity, and camera distance, height,
+orbit, tilt and zoom. Settings are saved on the phone.
+**Milestone 13:** flatter, higher pops: snapping the tail pops the board up more evenly
+(about half a board length) instead of standing it up vertical; 360 flips now come round and land.
+**Milestone 8:** game feel closer to True Skate / Touchgrind (snappier, rewards sharp flicks,
+carries speed); **steering** (lean the trucks); **catching** the board in the air and adjusting
+it; a much more detailed plaza (hubba, funbox, long ledge, red curb, bank, picnic table, city
+blocks); board wear details.
+**Milestone 7:** portrait mode — hold the phone upright; the board runs up the screen with the
+run ahead visible above it and room either side to push.
+**Milestone 6:** grinds and slides — solid trucks that lock onto rails and ledge edges, real
+friction between metal trucks / wooden deck and steel, painted or concrete surfaces, and a flat
+bar and a ledge right on the run-up line.
 
 ## The park
 
@@ -34,13 +63,54 @@ scratch and **overwrites edits made in the editor**:
 |---|---|
 | Touch the **back half** of the board | That finger is your **back foot** (orange dot). |
 | Touch the **front half** | That finger is your **front foot** (cyan dot). |
-| Back foot: **quick flick down the screen** on the tail | Snaps the tail down; it hits the ground and the board pops. A faster flick gives a harder pop. |
-| Front foot: **drag up toward the nose** after the pop | Catches the rising nose and levels the board. No slide means the board keeps rotating. |
+| Back foot: **quick flick down the screen** on the tail | Snaps the tail down; it hits the ground and the board pops up evenly. A faster flick gives a harder pop. |
+| Front foot: **drag up toward the nose** after the pop | Levels the board in the air. No slide means the board stays tilted up and lands tail-first. |
 | **Swipe backward on the ground** beside the board | Pushes. You can't push faster than you swipe. |
 | **RESET** (top right) | Puts the board back at the start. |
+| **II PAUSE** (under RESET), back button | Pauses the game and opens the settings menu. |
 
-Tip: start the front-foot slide just after the tail snap. If you slide too early, you press the
+The controls are tuned for **slow, deliberate fingers**: a calm press down the tail (about a
+tenth of a second) pops as well as a sharp flick, and flicking faster gives almost nothing extra
+(`foot_max_speed`). Gravity is lowered (`gravity_multiplier`), so the board hangs in the air.
+
+Tip: start the front-foot slide just after the tail snap.
+
+**Turning:** slide your fingers toward one side of the board — weight off the centre line leans
+the trucks and the board carves that way (`steer_sensitivity` in `board_tuning.tres`).
+
+**Catching:** after popping, lift a finger and put it back on the board while it's in the air.
+That finger catches the board: holding it still stops the spin and presses the board level;
+dragging it rotates the board so you can line it up before landing.
+
+**Grinds and slides:** ollie onto the in-line flat bar (after the manual pad) or the in-line
+ledge (after the low wall). Land with the **trucks** on it for a 50-50 / 5-0 / nosegrind, or
+with the board **across** it for a boardslide. Steel rails and coping are slick (grinds carry
+speed); wood on concrete grabs. On the ledge, the board tips in with its inside wheels on top,
+like a real ledge 50-50. The debug overlay shows "trucks grinding" and "deck sliding".
+Tune with `grind_mu` and `slide_mu` in `board_tuning.tres`.
+
+**Flip attempts:** after the pop, flick your front finger up toward the nose **and off the side**
+of the board, with a quick, deliberate flick (a slight wobble does nothing). A normal or a hard
+flick both give about one kickflip — the board's roll tops out at `press_side_max_roll`, so it
+doesn't spin out however hard you flick. A soft flick gives a partial flip. Pushing toward a side edge presses that edge (the deck's concave rises at the rails,
+just as the kicks rise at the ends), which rolls the board in the air. On the ground the wheels
+hold it flat, like a real board. If you slide too early, you press the
 board back down before it pops, just like a real ollie.
+
+**Shove-its / 360 flips:** as you snap the tail, keep the back finger moving **sideways** along
+the tail (a scoop). That end of the board is pushed round, and the board spins flat. For a 360 flip,
+scoop and flick the front finger toward the **same** side (both feet toward your heels, like a
+real backside scoop + kickflip). Both come round: the board flips once and shoves round, and lands on its wheels.
+
+**Pause menu settings** (saved on the phone; DEFAULTS puts them back to `board_tuning.tres`):
+
+| Setting | What it does |
+|---|---|
+| Game speed | Slow motion (0.1×–1.5×). The physics is identical, only slower: the same fingers per tick give the same trick. Your fingers aren't slowed, so a flick reads faster in slow motion; move your fingers slower to match. |
+| Gravity | × real gravity. Lower = more hang time. |
+| Board flip speed | Scales how fast a flick can roll the board and how fast a scoop can spin it. |
+| Flick sensitivity | How much a finger speed counts as a press (pops and flicks). Higher = easier. |
+| Camera | Distance behind, height, orbit round the board (left/right), tilt (aim up/down) and field of view. |
 
 ## How the physics works (short version)
 
@@ -79,7 +149,7 @@ Every time:
 - **Or build an APK:** *Project → Export… → Android → Export Project* (`build/fingerboard.apk`),
   then `adb install -r build/fingerboard.apk`.
 
-The preset in `export_presets.cfg` is already set up: arm64, landscape (either way up),
+The preset in `export_presets.cfg` is already set up: arm64, portrait (hold the phone upright),
 immersive full screen, VIBRATE permission for haptics. Tests are excluded from the build.
 
 Desktop testing: running in the editor works, and the mouse acts as one finger (push, or a single
@@ -96,13 +166,14 @@ apply live if you edit the resource while the game runs (Remote scene tree).
 ## Tests
 
 Headless physics checks that simulate real touch input: an ollie with and without the front slide,
-three pushes, a determinism repeat, and an ollie down the stairs at speed. Each scenario also
+three pushes, a determinism repeat, a pop shove-it, the same ollie at half game speed, an ollie down the stairs at speed, and an upside-down landing. Each scenario also
 prints "feel" numbers (sustained spin, bounces and settle time after landing, how much speed is
 kept, yaw drift), which is how "heavier" was measured:
 
 ```
 godot --headless --path . -s res://tests/test_ollie.gd
 TRACE=0 godot --headless --path . -s res://tests/test_ollie.gd   # per-tick trace of scenario 0
+ONLY=0,1 godot --headless --path . -s res://tests/test_ollie.gd  # run just scenarios 0 and 1
 ```
 
 ## Layout
@@ -110,14 +181,21 @@ TRACE=0 godot --headless --path . -s res://tests/test_ollie.gd   # per-tick trac
 ```
 scenes/main.tscn          park, board, camera, input, overlay
 scenes/skatepark.tscn     the park (sky, sun, ground, obstacles, scenery, Spawn marker)
-tools/build_park.gd       generates skatepark.tscn
+tools/build_park.gd       generates skatepark.tscn (overwrites it — careful)
+tools/add_grind_spots.gd  adds the in-line grind spots + slickness tags (keeps your edits)
+tools/add_plaza_details.gd adds the hubba, funbox, ledges, curb, furniture, city (keeps edits)
+tools/expand_park.gd      plaza extension, 5-stair, quarter pipe, kinked rail, polish (keeps edits)
 tuning/board_tuning.tres  all tuning values (script: scripts/board_tuning.gd)
 scripts/
   main.gd                 wires everything from the tuning resource
   board.gd                RigidBody3D: reads contacts, applies forces, pop/landing events
   board_geometry.gd       board dimensions (mm → world units)
   board_builder.gd        collision shapes built from the geometry
-  board_visuals.gd        realistic deck, bolts, trucks and wheels
+  board_visuals.gd        realistic deck (concave, rounded ply edges, worn grip, graphic)
+  truck_visuals.gd        trucks, hardware and wheels
+  deck_friction.gd        grip/edge friction when the board lands upside down or on its side
+  slide_friction.gd       grind/slide friction for trucks and the deck underside
+  catch_physics.gd        catching / adjusting the board with a finger in the air
   mesh_util.gd            mesh helpers (lathe, prisms, materials)
   finger.gd               one touch: role, screen/board position and velocity
   finger_input.gd         touches → feet/push fingers, measured in board space each tick
@@ -128,6 +206,8 @@ scripts/
   chase_camera.gd         low smooth chase camera
   haptics.gd              vibration on pop and landing
   debug_overlay.gd        finger dots/arrows, board map, speed/height/angles, reset
+  pause_menu.gd           pause button + settings menu (sliders, resume, reset, defaults)
+  game_settings.gd        the player's settings: saved/loaded, applied on top of the tuning
 shaders/                  concrete (slab joints = motion cue), grass, grip tape, deck wood
 tests/test_ollie.gd       headless physics tests
 ```

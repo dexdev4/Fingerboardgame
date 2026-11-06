@@ -19,14 +19,23 @@ var spawn_xf: Transform3D
 
 # Read by the debug overlay.
 var wheels_down := 0
+## Current truck lean (−1 … 1, + = right), from finger weight off the centre line.
+var lean := 0.0
+## Truck hangers touching something this tick (grinding).
+var truck_contacts := 0
+## Deck underside / kick contacts sliding on something this tick (slides, or a kick on the ground).
+var deck_slide_contacts := 0
 ## Height of the surface under the wheels the last time any wheel touched it.
 var ground_y := 0.0
 
 var _reset_requested := false
+var _reset_to := {}          # optional pose/velocity for the next reset (tests use this)
 var _prev_lin := Vector3.ZERO
 var _prev_ang := Vector3.ZERO
 var _kicks_touching := {}   # part name → bool, last tick
 var _air_time := 0.0
+## Which kick popped most recently: +1 tail, −1 nose, 0 = none since the wheels were last down.
+var _popped_end := 0.0
 
 
 func setup(t: BoardTuning, finger_input: FingerInput) -> void:
@@ -77,8 +86,11 @@ func _box_inertia() -> Vector3:
 	return Vector3(h * h + l * l, w * w + l * l, w * w + h * h) * (m / 12.0)
 
 
-func request_reset() -> void:
+## Put the board back at the spawn on the next physics tick. Tests may pass a different pose and
+## starting velocities (e.g. dropping it upside down) — applied at a tick, so still deterministic.
+func request_reset(xf: Variant = null, lin := Vector3.ZERO, ang := Vector3.ZERO) -> void:
 	_reset_requested = true
+	_reset_to = {"xf": xf if xf != null else spawn_xf, "lin": lin, "ang": ang}
 
 
 func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
@@ -91,6 +103,7 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 	var wheel_contacts: Array[Vector3] = []
 	var seen_wheels := {}
 	var kick_hits := {}
+	var deck_contacts: Array = []   # non-wheel contacts: [offset, normal, impulse, part, surface scale]
 	for i in state.get_contact_count():
 		var shape := state.get_contact_local_shape(i)
 		var part: String = parts.get(shape, "deck")
@@ -99,7 +112,19 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		if part == "wheel" and not seen_wheels.has(shape):
 			seen_wheels[shape] = true
 			wheel_contacts.append(r)
-		elif part == "tail" or part == "nose":
+		if part != "wheel":
+			# Orient the normal roughly from the surface into the board. (The centre of mass sits
+			# below the deck, so this is approximate for deck-bottom contacts; SlideFriction uses
+			# |impulse · n| and DeckFriction only needs the normal's line, so the sign is harmless.)
+			var nn := state.get_contact_local_normal(i)
+			if nn.dot(state.center_of_mass - r) < 0.0:
+				nn = -nn
+			var surface := state.get_contact_collider_object(i)
+			var scale := 1.0
+			if surface != null and surface.has_meta("slide_friction_scale"):
+				scale = surface.get_meta("slide_friction_scale")
+			deck_contacts.append([r, nn, state.get_contact_impulse(i), part, scale])
+		if part == "tail" or part == "nose":
 			# A kick usually touches at several corner points; accumulate them so the bounce is
 			# applied at their average (one corner alone would twist the board).
 			var n := state.get_contact_local_normal(i)
@@ -113,11 +138,22 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		ground_y = state.transform.origin.y + sum / wheels_down
 
 	# --- Forces. ---
-	input.physics_update(state.transform, state.get_space_state(), dt)
+	# Resting on anything (wheels, or trucks/deck on a rail or ledge) = fingers have weight on it.
+	var supported := wheels_down > 0 or not deck_contacts.is_empty()
+	input.physics_update(state.transform, state.get_space_state(), dt, not supported)
 	for f in input.feet():
-		FootPhysics.apply(state, f, geo, tuning, wheels_down > 0)
+		# Is the kick at this foot's end already on the ground? Then it can't be pushed further.
+		var end_down := kick_hits.has("tail" if f.local_pos.z > 0.0 else "nose")
+		FootPhysics.apply(state, f, geo, tuning, wheels_down > 0, supported, end_down, _popped_end)
+	if not supported:
+		CatchPhysics.apply(state, input.catchers(), tuning)
 	PushPhysics.apply(state, input.pushers(), wheels_down, tuning)
-	WheelPhysics.apply(state, wheel_contacts, tuning)
+	_update_lean(dt)
+	WheelPhysics.apply(state, wheel_contacts, tuning, lean)
+	DeckFriction.apply(state, deck_contacts, geo, tuning)
+	var sliding := SlideFriction.apply(state, deck_contacts, geo, tuning)
+	truck_contacts = sliding.x
+	deck_slide_contacts = sliding.y
 
 	# --- Events. ---
 	for part in ["tail", "nose"]:
@@ -125,11 +161,26 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		if touching and not _kicks_touching.get(part, false):
 			var hit: Array = kick_hits[part]
 			_pop(state, hit[0] / hit[2], (hit[1] as Vector3).normalized())
+			_popped_end = 1.0 if part == "tail" else -1.0
 		_kicks_touching[part] = touching
 	_track_landing(dt)
 
 	_prev_lin = state.linear_velocity
 	_prev_ang = state.angular_velocity
+
+
+## Truck lean from where the fingers press: lean moment M = Σ F_i · x_i (board-local x, + = right
+## rail). Normalised by "lean_full_weights board weights at the rail", then the bushings follow it
+## smoothly: lean += (target − lean)·(1 − e^(−response·dt)). Fingers toward the right rail → lean
+## right → the trucks turn right.
+func _update_lean(dt: float) -> void:
+	var moment := 0.0
+	for f in input.feet():
+		if f.on_board:
+			moment += f.press_force * f.local_pos.x
+	var full := tuning.board_weight() * tuning.lean_full_weights * geo.half_width
+	var target := clampf(moment / maxf(full, 1e-6), -1.0, 1.0) if wheels_down > 0 else 0.0
+	lean += (target - lean) * (1.0 - exp(-tuning.lean_response * dt))
 
 
 ## A kick just hit the ground. The engine's contact is perfectly dead (it already zeroed the
@@ -146,8 +197,36 @@ func _pop(state: PhysicsDirectBodyState3D, r: Vector3, n: Vector3) -> void:
 		return
 	var ang_term := (state.inverse_inertia_tensor * rc.cross(n)).cross(rc).dot(n)
 	var m_eff := 1.0 / (state.inverse_mass + ang_term)
-	state.apply_impulse(n * tuning.tail_restitution * v_in * m_eff, r)
+	# A SNAPPED kick (a foot is driving it into the ground) pops harder than a kick that just
+	# lands: the foot loads the deck and it springs back. Two parts, both ∝ the strike speed:
+	#  - extra bounce at the tail (pop_snap_restitution): pushing the tail tip up also tips
+	#    the nose back DOWN, so the board stops standing up vertical;
+	#  - extra lift through the centre of mass (pop_snap_lift × the bounce speed): the whole
+	#    deck springs up, so the board leaves the ground evenly instead of only rotating.
+	# Landings on a kick (no foot snapping it) keep the plain tail_restitution bounce.
+	var snapped := _foot_snapping(r)
+	var e := tuning.tail_restitution + (tuning.pop_snap_restitution if snapped else 0.0)
+	state.apply_impulse(n * e * v_in * m_eff, r)
+	if snapped:
+		state.apply_central_impulse(n * tuning.pop_snap_lift * e * v_in / state.inverse_mass)
 	popped.emit(v_in)
+
+
+## True if a foot SNAPPED the kick at offset `r` (global orientation, from the body origin) into
+## the ground: the board is on its wheels and a foot on that end was pressing it down hard.
+func _foot_snapping(r: Vector3) -> bool:
+	# Only from the wheels: the foot loads the deck against the ground by tipping it on an axle.
+	# A kick scraping the ground mid-air (mid-flip) is not a snap, even under a resting finger.
+	if wheels_down == 0:
+		return false
+	var end := signf((global_transform.basis.inverse() * r).z)   # +1 tail, −1 nose
+	var min_force := tuning.board_weight() * tuning.pop_snap_min_weights
+	for f in input.feet():
+		# Pressing hard on that end on the tick before the strike (this tick the press is
+		# already off: the kick is down).
+		if f.on_board and signf(f.local_pos.z) == end and f.last_press_force > min_force:
+			return true
+	return false
 
 
 ## Detects touchdown after being airborne (for haptics / overlay only, no forces).
@@ -155,6 +234,8 @@ func _track_landing(dt: float) -> void:
 	if wheels_down == 0 and _kicks_touching.values().count(true) == 0:
 		_air_time += dt
 		return
+	if wheels_down >= 3:
+		_popped_end = 0.0      # back on the wheels: the next pop decides again
 	if wheels_down > 0 and _air_time >= tuning.landing_min_air_time:
 		landed.emit(maxf(-_prev_lin.y, 0.0))
 	_air_time = 0.0
@@ -162,14 +243,16 @@ func _track_landing(dt: float) -> void:
 
 func _do_reset(state: PhysicsDirectBodyState3D) -> void:
 	_reset_requested = false
-	state.transform = spawn_xf
-	state.linear_velocity = Vector3.ZERO
-	state.angular_velocity = Vector3.ZERO
+	state.transform = _reset_to.get("xf", spawn_xf)
+	state.linear_velocity = _reset_to.get("lin", Vector3.ZERO)
+	state.angular_velocity = _reset_to.get("ang", Vector3.ZERO)
+	_reset_to = {}
 	_prev_lin = Vector3.ZERO
 	_prev_ang = Vector3.ZERO
 	ground_y = spawn_xf.origin.y - geo.rest_height - 0.002
 	_kicks_touching.clear()
 	_air_time = 0.0
+	lean = 0.0
 	input.clear()
 	reset_done.emit()
 

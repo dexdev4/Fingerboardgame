@@ -9,8 +9,9 @@ extends Resource
 ## World units per real metre. 10 => the 96 mm board is 0.96 units long,
 ## a comfortable size for the physics engine and the camera.
 @export var world_scale: float = 10.0
-## 1.0 = real gravity (9.81 m/s² scaled to world units). Lower = floatier.
-@export var gravity_multiplier: float = 1.0
+## 1.0 = real gravity (9.81 m/s² scaled to world units). Lower = floatier: longer hang time,
+## slower falls. 0.3 gives the slow, floaty feel (M3); raise toward 1.0 for snappy realism.
+@export var gravity_multiplier: float = 0.4
 ## Fixed physics rate. Higher = more stable contacts, more CPU. Keep a multiple of 60.
 @export var physics_ticks_per_second: int = 120
 
@@ -34,7 +35,13 @@ extends Resource
 ## Deck concave: how much higher the rails (edges) sit than the centre line (mm). Visual.
 @export var concave_mm: float = 1.0
 
+## Visual bend into each kick (mm either side of the bend). Real decks curve; 0 = sharp crease.
+@export var kick_bend_mm: float = 5.0
+
 @export_group("Board look")
+## Wordmark printed on the bottom graphic (made-up brand) and its colour.
+@export var deck_wordmark: String = "PLAZA 96"
+@export var wordmark_color: Color = Color(0.08, 0.08, 0.1)
 @export var grip_color: Color = Color(0.07, 0.07, 0.075)
 ## Bottom graphic: stripes/ends colour and the logo/middle colour.
 @export var graphic_color_a: Color = Color(0.85, 0.2, 0.15)
@@ -53,45 +60,135 @@ extends Resource
 ## Air drag on linear motion (1/s). Fingerboards are light, so a little drag matters.
 @export var linear_damp: float = 0.02
 ## Damping of spin (1/s). Higher = board stops rotating sooner in the air.
-@export var angular_damp: float = 1.0
+@export var angular_damp: float = 1.5
 
 @export_group("Wheels")
 ## How fast sideways sliding of a grounded wheel is cancelled (1/s). Keep < ticks/s.
 @export var wheel_lateral_grip: float = 40.0
 ## Constant rolling deceleration from bearings/wheels (units/s²).
-@export var rolling_resistance: float = 0.12
+@export var rolling_resistance: float = 0.06
 ## Truck bushings + wheel urethane soaking up landings: while 3+ wheels are down, the board's
 ## pitch/roll spin and its bounce along the deck's up axis are damped at this rate (1/s).
 ## Higher = landings "stick" and feel heavier; 0 = a hard plastic toy. Keep < ticks/s.
 @export var bushing_damping: float = 30.0
 
+@export_group("Deck on the ground (bails)")
+## Friction coefficient when the grip tape or deck edge touches the ground (landing upside down
+## or on its side). Grip tape on concrete is very grippy: ~0.9.
+@export var deck_friction_mu: float = 0.9
+## How quickly that friction stops sliding (1/s, mass-normalised). Keep < ticks/s.
+@export var deck_stick_rate: float = 40.0
+
+@export_group("Steering (truck lean)")
+## Real trucks steer when the deck leans: weight off the centre line (fingers toward a rail)
+## leans the deck, and both trucks turn into the lean. Lean is normalised: 1 = this many board
+## weights pressing right at the rail.
+@export var lean_full_weights: float = 0.2
+## Wheel steer angle at full lean (degrees) before sensitivity. Front and rear turn opposite ways.
+@export var max_steer_deg: float = 14.0
+## Multiplies the steer angle. THE turning sensitivity knob.
+@export var steer_sensitivity: float = 1.4
+## How quickly the bushings follow your weight shift (1/s). Higher = snappier turning.
+@export var lean_response: float = 10.0
+
+@export_group("Catching in the air")
+## Put a finger on the board while it's in the air to catch it. The catching finger damps the
+## board's spin toward what the finger is doing over this time (s): hold still = stop the spin,
+## drag = rotate the board (adjust it before landing). Keep ≥ 2 ticks.
+@export var catch_hold_time: float = 0.06
+## How strongly dragging a caught finger turns the board (1 = only as fast as the finger's point
+## moves; higher = the foot twists it, like a real sole). Adjusting flips/shove-its mid-air.
+@export var catch_adjust_gain: float = 3.0
+## ...and presses it level (deck up → world up) over this time (s), like a flat foot.
+@export var catch_level_time: float = 0.15
+## Only levels when the grip faces up at least this much (deck up · world up): you can't catch
+## a board that's upside down by touching its bottom.
+@export var catch_min_up: float = 0.2
+
+@export_group("Grinds and slides")
+## Friction of the metal trucks sliding on things (50-50s, 5-0s, nosegrinds). Steel on steel or
+## waxed concrete is slick: ~0.15. Lower = grinds carry speed further.
+@export var grind_mu: float = 0.15
+## Friction of the wooden deck bottom / kicks sliding (boardslides, tailslides, noseslides).
+## Grabbier than trucks: ~0.3. Each obstacle multiplies these by its "slide_friction_scale".
+@export var slide_mu: float = 0.3
+
 @export_group("Feet (fingers on the board)")
 ## Shifts the back/front split along the board (mm, + toward the tail).
 @export var foot_split_mm: float = 0.0
+## Flick input sensitivity (pause menu): multiplies every press speed read from a finger (end
+## and side presses). 2 = a flick counts as twice as fast (easier pops/flips, deadzones feel
+## half as wide); 0.5 = you need twice the finger speed. Caps (foot_max_speed etc.) are unchanged.
+@export var flick_sensitivity: float = 1.0
+## A new touch counts as landing on the board this far outside the deck outline (mm). Generous,
+## because the board is thin on screen — placing a finger should be easy.
+@export var foot_assign_margin_mm: float = 10.0
 ## A finger counts as "on the board" this far past the deck's side edges (mm).
 @export var foot_catch_margin_mm: float = 3.0
 ## ...and this far past the nose/tail tips (mm). Generous, because flicking down on the tail
 ## moves the finger past the tip on screen while, in "real life", it is still on the kick.
 @export var foot_end_margin_mm: float = 30.0
 ## Finger velocity is measured across this many physics ticks (smooths 60 Hz touch input).
-@export var finger_velocity_ticks: int = 6
+@export var finger_velocity_ticks: int = 10
 ## Downward force of a resting finger while the board is on its wheels, in board weights.
 @export var foot_rest_weight: float = 0.25
 ## How fast a pressing finger drives its point of the deck down (units/s) per unit of
-## press speed (screen heights/s). Press speed = finger speed on screen toward the end of the
+## press speed (screen units/s; 1 unit = the screen's short side). Press speed = finger speed on screen toward the end of the
 ## board nearest that finger. THE main "pop strength" knob.
-@export var press_speed_gain: float = 2.5
+@export var press_speed_gain: float = 2.6
 ## Press only works on the outer part of the board, where the kicks rise: it fades in from
 ## this distance from the centre (mm) to full strength at the kick bend. Default sits just
 ## inside the bolts, so a front foot slides freely until it reaches the front bolts.
 @export var press_zone_start_mm: float = 15.0
-## Finger speeds below this (screen heights/s) don't press — filters jitter.
-@export var press_deadzone: float = 0.3
+## The same, while the wheels are off the ground (mm). Much nearer the middle, so the front
+## finger levels the board in the air without having to reach the nose — flatter, more
+## controllable ollies.
+@export var press_zone_start_air_mm: float = 6.0
+## Top speed a foot can move the deck at (units/s) — both pressing it down and dragging it
+## along the grip. Above this, flicking harder does nothing more: slow, deliberate fingers
+## get the full effect and the board's reactions stay smooth however fast you flick.
+@export var foot_max_speed: float = 3.5
+## Side presses: a finger driven toward the nearest RAIL presses that edge, because the concave
+## rises toward the rails just like the kicks rise toward the ends. Strength relative to end
+## presses. On the ground the wheels stop the board rolling; in the air it rolls (flip tricks:
+## pop, then flick the front finger off the side).
+@export var press_side_gain: float = 16.0
+## A side flick must be at least this fast (screen units/s) before it presses the rail at all —
+## higher than press_deadzone, so flips need a deliberate flick off the side, not a wobble.
+@export var press_side_deadzone: float = 0.35
+## Top speed a side press can drive the rail at (units/s).
+@export var press_side_max_speed: float = 16.0
+## Fastest a flick can ROLL the board (rad/s): once the board rolls this fast toward the flicked
+## rail, the flick adds no more. Makes flips predictable — a normal or hard flick both give about
+## one rotation (it has ~0.17 s before the tail comes back near the ground: 36 rad/s ≈ 1 flip).
+## THE "how much does a kickflip spin" knob (lower = lazier flips, higher = more spin).
+@export var press_side_max_roll: float = 36.0
+## Response time for side presses (s). A flick off the side touches the rail only briefly, so
+## it needs a quicker foot than the smooth ollie press (press_response_time). Keep ≥ 2 ticks.
+@export var press_side_response_time: float = 0.03
+## A side press only counts if the finger crosses the deck toward that rail at least this fast
+## (units/s, measured on the board; 0.5 = 5 cm/s real). Stops straight slides rolling the board.
+@export var press_side_min_cross_speed: float = 0.5
+## Scoops (shove-it spin): a foot on a kick sweeping sideways pushes that end round. Spin per
+## unit of "spin that matches the foot" (1 = the end moves sideways exactly as fast as the foot).
+@export var press_scoop_gain: float = 8.0
+## Fastest a scoop can spin the board (rad/s) — ~one 360 in a normal pop, however hard you scoop.
+@export var press_scoop_max_spin: float = 18.0
+## A scoop must move sideways across the deck at least this fast (units/s; 1 = 10 cm/s real).
+@export var press_scoop_min_speed: float = 0.4
+## A foot only scoops while the grip faces up at least this much (deck up · world up; 0.5 = up
+## to 60° away from upright). Mid-flip the deck has rolled away from under the foot.
+@export var press_scoop_min_upright: float = 0.5
+## Side presses fade in from this distance from the centre line (mm) to full at the rail.
+## The deck is 28 mm wide, so the rail is at 14 mm.
+@export var press_side_zone_start_mm: float = 3.0
+## Finger speeds below this (screen units/s; 1 unit = the screen's short side) don't press — filters jitter.
+@export var press_deadzone: float = 0.15
 ## How quickly a foot gets its point of the deck up to speed (s). Smaller = snappier, harder
 ## feet. Keep ≥ 2 physics ticks (0.017 s at 120 Hz) for stability.
-@export var press_response_time: float = 0.045
+@export var press_response_time: float = 0.07
 ## Upper limit for one finger's press force, in board weights.
-@export var press_max_weights: float = 20.0
+@export var press_max_weights: float = 10.0
 ## How strongly a sliding finger drags the grip tape (1/s, mass-normalised).
 @export var grip_rate: float = 25.0
 ## Grip tape friction coefficient: drag force is capped at grip_mu × press force.
@@ -99,9 +196,19 @@ extends Resource
 
 @export_group("Pop")
 ## Extra bounce when the tail strikes the ground (0 = dead tail, 1 = superball).
-@export var tail_restitution: float = 0.8
+@export var tail_restitution: float = 0.6
+## Extra bounce when a FOOT snaps the kick into the ground (added to tail_restitution). Pushing
+## the tail tip up also tips the nose back down: higher = flatter pops that rise more.
+## Landings on a kick (no foot pressing it) don't get it.
+@export var pop_snap_restitution: float = 1.5
+## Extra lift for a snapped pop, through the centre of mass (× the tail's bounce speed): the
+## deck springs back as a whole, so the board leaves the ground evenly instead of only rotating.
+@export var pop_snap_lift: float = 0.0
+## A strike counts as a snap only if a foot on that end was pressing at least this hard
+## (board weights) the tick before. A resting finger (foot_rest_weight) doesn't snap.
+@export var pop_snap_min_weights: float = 1.0
 ## Tail strikes slower than this (units/s) don't bounce or buzz.
-@export var pop_min_speed: float = 2.0
+@export var pop_min_speed: float = 1.0
 
 @export_group("Pushing")
 ## Push force per unit of (swipe speed − board speed), mass-normalised (1/s).
@@ -110,22 +217,54 @@ extends Resource
 @export var push_max_accel: float = 40.0
 ## Converts swipe speed across the ground into pushing-foot speed. The camera foreshortens
 ## the ground, so a natural swipe covers little ground; >1 makes a full swipe a full push.
-@export var push_speed_scale: float = 2.0
+@export var push_speed_scale: float = 3.0
 ## A ground touch must land within this distance of the board to push (mm).
 @export var push_reach_mm: float = 250.0
 
 @export_group("Camera")
 ## Horizontal distance behind the board (world units; the board is 0.96 long).
 ## Closer = bigger board on screen = finer finger control.
-@export var camera_distance: float = 1.2
-@export var camera_height: float = 0.5
-@export var camera_fov_deg: float = 40.0
+@export var camera_distance: float = 1.15
+@export var camera_height: float = 0.8
+@export var camera_fov_deg: float = 55.0
 ## The camera aims this far ahead of the board.
-@export var camera_look_ahead: float = 0.1
+@export var camera_look_ahead: float = 0.35
 ## How quickly the camera catches up with the board (1/s).
-@export var camera_follow: float = 6.0
+@export var camera_follow: float = 5.0
 ## How quickly the camera swings round to the board's heading (1/s).
-@export var camera_turn_follow: float = 3.0
+@export var camera_turn_follow: float = 2.5
+## Swings the camera round the board (degrees about the vertical): 0 = straight behind,
+## + = round to the board's right side, − = left side.
+@export var camera_orbit_deg: float = 0.0
+## Raises (+) or lowers (−) the point the camera aims at (world units, from the board), which
+## tilts the view up toward the run ahead or down onto the board.
+@export var camera_aim_height: float = 0.0
+
+@export_group("Pause menu (slider ranges)")
+## Game speed (time manipulator): 1 = real time, 0.5 = half-speed slow motion. Every physics
+## tick stays 1/120 s; only how many ticks run per real second changes, so tricks are identical.
+@export var menu_game_speed_min: float = 0.1
+@export var menu_game_speed_max: float = 1.5
+## Board flip speed: multiplier on the flip/shove spin ceilings (press_side_max_roll,
+## press_side_max_speed, press_scoop_max_spin).
+@export var menu_flip_speed_min: float = 0.5
+@export var menu_flip_speed_max: float = 1.6
+## Flick input sensitivity (flick_sensitivity).
+@export var menu_flick_sensitivity_min: float = 0.5
+@export var menu_flick_sensitivity_max: float = 2.0
+## Gravity (gravity_multiplier, × real gravity).
+@export var menu_gravity_min: float = 0.1
+@export var menu_gravity_max: float = 1.0
+## Camera position and angle ranges (world units / degrees).
+@export var menu_camera_distance_min: float = 0.5
+@export var menu_camera_distance_max: float = 2.5
+@export var menu_camera_height_min: float = 0.2
+@export var menu_camera_height_max: float = 2.0
+@export var menu_camera_orbit_max_deg: float = 90.0
+@export var menu_camera_aim_min: float = -0.5
+@export var menu_camera_aim_max: float = 0.8
+@export var menu_camera_fov_min: float = 35.0
+@export var menu_camera_fov_max: float = 85.0
 
 @export_group("Haptics")
 @export var haptics_enabled: bool = true

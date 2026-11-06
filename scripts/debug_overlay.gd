@@ -46,21 +46,22 @@ func setup(b: Board, i: FingerInput) -> void:
 
 func _process(_dt: float) -> void:
 	var size := _canvas.get_viewport_rect().size
-	var ui := maxf(size.y / 720.0, 0.5)      # scale UI with screen height
+	var ui := maxf(minf(size.x, size.y) / 720.0, 0.5)   # scale UI with the screen's short side
 	_label.add_theme_font_size_override("font_size", int(18 * ui))
 	_label.position = Vector2(150, 12) * ui
 	_reset.add_theme_font_size_override("font_size", int(26 * ui))
 	_reset.position = Vector2(size.x - _reset.size.x - 16 * ui, 16 * ui)
 
 	var a := board.angles_deg()
-	_label.text = "speed  %6.1f cm/s\nheight %6.1f mm\npitch  %6.1f°   roll %6.1f°   yaw %6.1f°\nwheels down %d   last pop %.1f u/s\n%d fps" % [
+	_label.text = "speed  %6.1f cm/s\nheight %6.1f mm\npitch  %6.1f°   roll %6.1f°   yaw %6.1f°\nwheels down %d   last pop %.1f u/s\ntrucks grinding %d   deck sliding %d\n%d fps" % [
 		board.speed_cm_s(), board.height_mm(), a.x, a.y, a.z,
-		board.wheels_down, _last_pop, Engine.get_frames_per_second()]
+		board.wheels_down, _last_pop, board.truck_contacts, board.deck_slide_contacts, Engine.get_frames_per_second()]
 	_canvas.queue_redraw()
 
 
 func _draw_canvas() -> void:
-	var ui := maxf(_canvas.get_viewport_rect().size.y / 720.0, 0.5)
+	var vs := _canvas.get_viewport_rect().size
+	var ui := maxf(minf(vs.x, vs.y) / 720.0, 0.5)
 	for f: Finger in input.fingers.values():
 		_draw_finger(f, ui)
 	_draw_inset(ui)

@@ -44,7 +44,7 @@ func _physics_process(dt: float) -> void:
 	var v := (board as RigidBody3D).linear_velocity if board is RigidBody3D else Vector3.ZERO
 	v.y = 0.0   # vertical motion (pops, drops) stays smoothed so the view doesn't jolt
 	global_position = (global_position + v * dt).lerp(target.origin, follow)
-	look_at(board.global_position + _heading * tuning.camera_look_ahead, Vector3.UP)
+	look_at(_aim_point(board.global_position), Vector3.UP)
 
 
 ## The board's nose direction flattened onto the ground. When the board points straight up
@@ -56,7 +56,17 @@ func _board_heading(fallback: Vector3) -> Vector3:
 
 
 func _target_xf(board_pos: Vector3) -> Transform3D:
-	var pos := board_pos - _heading * tuning.camera_distance + Vector3.UP * tuning.camera_height
+	# Behind the board (−heading), swung round it by camera_orbit_deg about the vertical.
+	# Rotating the "behind" vector (0,0,+1 for a board heading −Z) by +θ about UP gives
+	# (sin θ, 0, cos θ): positive orbit moves the camera to the board's right (+X).
+	var behind := (-_heading).rotated(Vector3.UP, deg_to_rad(tuning.camera_orbit_deg))
+	var pos := board_pos + behind * tuning.camera_distance + Vector3.UP * tuning.camera_height
 	pos.y = maxf(pos.y, tuning.camera_height * 0.5)   # never dip under the ground when popping
-	return Transform3D.IDENTITY.translated(pos).looking_at(
-			board_pos + _heading * tuning.camera_look_ahead, Vector3.UP)
+	return Transform3D.IDENTITY.translated(pos).looking_at(_aim_point(board_pos), Vector3.UP)
+
+
+## Where the camera looks: a little ahead of the board, raised/lowered by camera_aim_height
+## (that's the camera's tilt). The look-ahead follows the board's heading, not the orbit, so
+## the run ahead stays in view from the side too.
+func _aim_point(board_pos: Vector3) -> Vector3:
+	return board_pos + _heading * tuning.camera_look_ahead + Vector3.UP * tuning.camera_aim_height

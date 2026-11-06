@@ -9,6 +9,8 @@ enum Role { NONE, BACK_FOOT, FRONT_FOOT, PUSH, IGNORED }
 
 var touch_index: int
 var role: Role = Role.NONE
+## This touch landed on the board while the board was in the air: it's a CATCH (see CatchPhysics).
+var caught_in_air := false
 
 ## Latest screen position (pixels). Updated by input events, sampled once per physics tick.
 var screen_pos: Vector2
@@ -25,11 +27,17 @@ var local_pos := Vector3.ZERO
 ## Finger velocity over the deck, board local (units/s). Pure finger motion: both ends are
 ## measured against the *current* board pose, so the board moving under a still finger reads 0.
 var local_vel := Vector3.ZERO
-## Finger speed on screen toward the end of the board nearest it (screen heights/s).
+## Finger speed on screen toward the end of the board nearest it (screen units/s; 1 unit = the screen's short side).
 var press_speed := 0.0
+## Finger speed on screen toward the side edge (rail) nearest it (screen units/s; 1 unit = the screen's short side).
+var press_speed_side := 0.0
 ## Last forces applied (for the debug overlay), world units.
 var press_force := 0.0
 var drag_force := 0.0
+## press_force of the PREVIOUS tick (Board's pop reads it: on the strike tick the press is off).
+var last_press_force := 0.0
+## Spin the foot's scoop is driving toward this tick (rad/s about the shove axis, FootPhysics.shove_axis; 0 = not scooping).
+var scoop_target := 0.0
 
 # ---- Push finger only ----
 ## Height of the surface the push finger landed on (the park isn't flat).
