@@ -25,7 +25,7 @@ var upside_start := Vector3.ZERO
 var roll_total := 0.0
 var straight_roll := 0.0
 var prev_roll_rate := 0.0
-var yaw_total := 0.0           # sustained yaw (spin about the deck's up axis), degrees
+var yaw_total := 0.0           # sustained shove spin (heading of the long axis, FootPhysics.shove_axis), degrees
 var prev_yaw_rate := 0.0
 var flip_rolls := {}           # scenario → peak roll, for the predictability check
 var second_roles: Array = []
@@ -103,8 +103,11 @@ func _start_scenario() -> void:
 		15: _plan_flip(Vector2(0.14, -0.22), SLIDE_START + 4)   # soft kickflip flick
 		16: _plan_flip(Vector2(0.32, -0.30), SLIDE_START + 4)   # hard kickflip flick
 		# 360 flip: the back foot snaps down AND scoops sideways, carrying the scoop through the pop.
+		# Real footwork: BOTH feet go toward the heel side — the back foot scoops the tail backside
+		# (behind you) and the front foot flicks off the heel-side corner — so the scoop goes the
+		# same screen direction as the flick. (The nose then swings away from the flicking finger.)
+		17: _plan_flip(Vector2(0.18, -0.26), SLIDE_START + 4, Vector2(0.06, 0.12), FLIP_FLICK_TICKS, Vector2(0.14, 0.0))
 		18: _plan_second_finger()
-		17: _plan_flip(Vector2(0.18, -0.26), SLIDE_START + 4, Vector2(-0.06, 0.12), FLIP_FLICK_TICKS, Vector2(-0.14, 0.0))
 		_:
 			_finish()
 
@@ -140,8 +143,10 @@ func _physics_process(_dt: float) -> bool:
 			was_airborne = true
 		elif was_airborne and yaw_at_touchdown == 0.0:
 			yaw_at_touchdown = board.angles_deg().z
-	# Spin about the world vertical (a shove-it spins the board round, whatever its pitch).
-	var yr := board.angular_velocity.dot(Vector3.UP)
+	# Shove spin: how fast the deck's long axis swings round horizontally (FootPhysics.shove_axis).
+	# Not the plain world vertical: mid-pop the board is pitched up, and a kickflip's roll would
+	# then count as "spin" (pure kickflips used to read 170–240° of shove).
+	var yr := board.angular_velocity.dot(FootPhysics.shove_axis(board.global_transform.basis))
 	var ys := signf(yr) * minf(absf(yr), absf(prev_yaw_rate)) if signf(yr) == signf(prev_yaw_rate) else 0.0
 	prev_yaw_rate = yr
 	yaw_total += rad_to_deg(ys) / Engine.physics_ticks_per_second
@@ -150,8 +155,9 @@ func _physics_process(_dt: float) -> bool:
 	if OS.get_environment("TRACE") == str(scenario) and tick >= SETTLE and tick < SETTLE + 200:
 		var fs := ""
 		for f: Finger in input.fingers.values():
-			fs += " [r%d on%s z%.2f ps%.1f F%.1fW]" % [f.role, "Y" if f.on_board else "n", f.local_pos.z, f.press_speed, f.press_force / board.tuning.board_weight()]
-		print("t%d h%.1f p%.1f w%d k%s vy%.1f wx%.1f |w|%.1f%s" % [tick, board.height_mm(), a.x, board.wheels_down, str(board._kicks_touching.values()), board.linear_velocity.y, board.angular_velocity.x, board.angular_velocity.length(), fs])
+			fs += " [r%d on%s x%.2f z%.2f ps%.1f pss%.1f F%.1fW D%.1fW sc%.1f]" % [f.role, "Y" if f.on_board else "n", f.local_pos.x, f.local_pos.z, f.press_speed, f.press_speed_side, f.press_force / board.tuning.board_weight(), f.drag_force / board.tuning.board_weight(), f.scoop_target]
+		var wl := board.global_transform.basis.inverse() * board.angular_velocity   # board-local spin
+		print("t%d h%.1f p%.1f w%d k%s vy%.1f pitch%.1f roll%.1f shove%.1f%s" % [tick, board.height_mm(), a.x, board.wheels_down, str(board._kicks_touching.values()), board.linear_velocity.y, wl.x, wl.z, board.angular_velocity.dot(FootPhysics.shove_axis(board.global_transform.basis)), fs])
 	log_rows.append([tick, board.height_mm(), a.x, board.speed_cm_s(), board.wheels_down, board.angular_velocity.length()])
 	tick += 1
 	if scenario == 18 and tick == SETTLE + 2:
@@ -407,12 +413,13 @@ func _report() -> void:
 			_expect(flip_rolls.get(6, 0.0) > 270.0 and flip_rolls.get(6, 0.0) < 450.0, "a normal flick gives one flip (270–450°)")
 		17:
 			print("  360 flip: roll %.0f°, spin %.0f°" % [roll_peak, yaw_total])
-			# KNOWN GAP (M10): the back-foot scoop also drags the grip and fights the front flick,
-			# so the 360 flip doesn't come round yet. Reported, not asserted.
-			print("  [known gap] 360 flip roll %.0f° (target 200–450°)" % roll_peak)
-			# KNOWN GAP (M9): the scoop adds some spin but doesn't yet reliably reach a full 360 shove.
-			# Reported, not asserted — tighten this to (120–450°) once the scoop is reworked.
-			print("  [known gap] 360 flip scoop spin %.0f° (target 120–450°)" % yaw_total)
+			# M11: the scoop spins the board round (shove axis + pure-spin torque) — asserted.
+			_expect(yaw_total > 120.0 and yaw_total < 450.0, "the back-foot scoop shoves the board round (120–450°)")
+			_expect(roll_peak > 90.0, "the scoop no longer cancels the front flick (>90° roll)")
+			# KNOWN GAP (M11): the flip half. The flick now rolls the board as fast as a kickflip,
+			# but while the board shoves round the flip's angular momentum stays fixed in the world
+			# (torque-free rigid-body motion: roll turns into pitch), so it comes down on its side.
+			print("  [known gap] 360 flip roll %.0f° (target 270–450°, landing on the wheels)" % roll_peak)
 		18:
 			print("  roles: back %d, second (landed on the back half) %d, just-off-the-edge %d"
 					% second_roles)

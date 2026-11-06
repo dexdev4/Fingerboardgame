@@ -34,6 +34,8 @@ var press_speed_side := 0.0
 ## Last forces applied (for the debug overlay), world units.
 var press_force := 0.0
 var drag_force := 0.0
+## Spin the foot's scoop is driving toward this tick (rad/s about the shove axis, FootPhysics.shove_axis; 0 = not scooping).
+var scoop_target := 0.0
 
 # ---- Push finger only ----
 ## Height of the surface the push finger landed on (the park isn't flat).

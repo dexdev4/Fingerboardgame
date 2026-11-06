@@ -62,6 +62,7 @@ static func apply(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
 		t: BoardTuning, grounded: bool, supported: bool, end_down: bool, popped_end: float = 0.0) -> void:
 	f.press_force = 0.0
 	f.drag_force = 0.0
+	f.scoop_target = 0.0
 	if not f.on_board:
 		return
 	var basis := state.transform.basis
@@ -100,6 +101,12 @@ static func apply(state: PhysicsDirectBodyState3D, f: Finger, g: BoardGeometry,
 	# flicks. A back foot sweeping sideways along the tail in a 360 flip mustn't flick the board
 	# the opposite way to the front foot.
 	if popped_end != 0.0 and signf(f.local_pos.z) == popped_end:
+		push_side = 0.0
+	# Same rule as push_end: a kick that's on the ground can't be pressed any lower — not its
+	# edge either. Without this, a back foot snapping diagonally (into a 360 flip scoop) "flicked"
+	# the tail's rail on the strike tick itself (before the pop registers as popped_end): a big
+	# off-centre force that rolled the board the wrong way and held the tail on the ground.
+	if end_down:
 		push_side = 0.0
 	# A side press also needs the finger to really cross the deck toward that rail (board space,
 	# units/s). On screen alone, a finger sliding straight toward the nose can pick up a small
@@ -182,26 +189,42 @@ static func _drive_about_axle(state: PhysicsDirectBodyState3D, f: Finger, g: Boa
 
 
 ## A foot sweeping SIDEWAYS along a kick scoops it: the kick rises, so instead of slipping the foot
-## catches on it and pushes that end of the board round — a shove-it spin about the vertical.
-##   target spin  ω* = clamp(press_scoop_gain · v_side / |z|,  ±press_scoop_max_spin)   (rad/s)
+## catches on it and pushes that end of the board round — a shove-it spin.
+##   target spin  ω* = clamp(press_scoop_gain · v_side / z,  ±press_scoop_max_spin)   (rad/s)
 ##     (v_side = the foot's sideways speed over the deck, z = how far along the board it is:
 ##      the spin that moves that end of the board sideways at the foot's speed, × gain)
-##   torque       τ  = I_spin · (ω* − ω_spin) / press_side_response_time   about the vertical
+##   torque       τ  = I_world · (a · (ω* − ω_a)) / press_side_response_time
+## The SHOVE AXIS a is the vertical with its component along the board removed:
+##   a = normalize(UP − (UP·Z) Z),   Z = the deck's long axis (basis.z)
+## Turning about a swings the deck's long axis round horizontally (a heading change) — that's
+## what a shove-it is. Roll about Z itself is the kickflip: it doesn't move Z at all, so it isn't
+## part of ω_a. (Driving spin about the plain world vertical was the 360-flip bug: mid-pop the board
+## is pitched ~50°, so the kickflip's roll has a big vertical component, and the scoop spent its
+## torque cancelling the flip.) Flat board: a = UP. Pitched, no roll: a = the deck's up axis.
+## τ uses the full world inertia tensor so the torque changes ONLY ω_a (no coupled tumble).
 ## Like flips, the spin tops out at press_scoop_max_spin however hard you scoop, so a 360 shove
 ## (or the shove in a 360 flip) comes round about once in a normal pop — predictable.
 static func _scoop_spin(state: PhysicsDirectBodyState3D, f: Finger, t: BoardTuning) -> void:
 	var v_side := f.local_vel.x
 	if absf(v_side) < t.press_scoop_min_speed:
 		return
-	# Spin about the VERTICAL: the foot pushes the kick sideways across the ground. (About the
-	# deck's own up axis it would tumble the board whenever it's pitched up steeply.)
-	var axis := Vector3.UP
-	# Foot at +z (tail) moving +x swings the tail right: spin about +Y is negative there
-	# (ω × r: (0, ω, 0) × (0, 0, z) = (ω·z, 0, 0), so ω = v_side / z).
+	var axis := shove_axis(state.transform.basis)
+	if axis == Vector3.ZERO:
+		return                                   # board standing on end: no heading to swing
+	# Foot at +z (tail) moving +x swings the tail right: a × Z = X, so ω × r = ω·z·X, ω = v_side / z.
 	var w_target := clampf(t.press_scoop_gain * v_side / maxf(absf(f.local_pos.z), 0.05) * signf(f.local_pos.z),
 			-t.press_scoop_max_spin, t.press_scoop_max_spin)
 	var w_now := state.angular_velocity.dot(axis)
 	if (w_target - w_now) * w_target <= 0.0:
 		return                                   # already spinning at least that fast that way
-	var i_spin := 1.0 / maxf((state.inverse_inertia_tensor * axis).dot(axis), 1e-9)
-	state.apply_torque(axis * i_spin * (w_target - w_now) / t.press_side_response_time)
+	f.scoop_target = w_target
+	var i_world := state.inverse_inertia_tensor.inverse()
+	state.apply_torque(i_world * (axis * (w_target - w_now)) / t.press_side_response_time)
+
+
+## The shove axis (see _scoop_spin): world vertical minus its part along the deck's long axis.
+## ZERO when the board stands nearly on end (|UP·Z| > 0.95) and its heading is undefined.
+static func shove_axis(basis: Basis) -> Vector3:
+	var z := basis.z.normalized()
+	var a := Vector3.UP - z * z.dot(Vector3.UP)
+	return Vector3.ZERO if a.length() < 0.3 else a.normalized()

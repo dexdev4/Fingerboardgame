@@ -18,6 +18,9 @@ anti-aliasing and film-like colour.
 air; a crooked slide no longer rolls it); the second finger is easier to place (it always
 becomes the other foot, and touches just off the board count); a bigger plaza with a 5-stair
 (handrail + hubba), a quarter pipe, a kinked rail, manual pads, a bank, planters and lamps.
+**Milestone 11:** the scoop: sweeping the back foot sideways along the tail as you pop spins the
+board round (shove-it), and it no longer cancels a front-foot flick. The 360 flip's flip half is
+still being worked on (it comes down on its side).
 **Milestone 8:** game feel closer to True Skate / Touchgrind (snappier, rewards sharp flicks,
 carries speed); **steering** (lean the trucks); **catching** the board in the air and adjusting
 it; a much more detailed plaza (hubba, funbox, long ledge, red curb, bank, picnic table, city
@@ -87,6 +90,11 @@ doesn't spin out however hard you flick. A soft flick gives a partial flip. Push
 just as the kicks rise at the ends), which rolls the board in the air. On the ground the wheels
 hold it flat, like a real board. If you slide too early, you press the
 board back down before it pops, just like a real ollie.
+
+**Shove-its / 360 flips:** as you snap the tail, keep the back finger moving **sideways** along
+the tail (a scoop). That end of the board is pushed round, and the board spins flat. For a 360 flip,
+scoop and flick the front finger toward the **same** side (both feet toward your heels, like a
+real backside scoop + kickflip). The shove comes round; the flip currently gets about half way.
 
 ## How the physics works (short version)
 

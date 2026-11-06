@@ -203,8 +203,29 @@ Follow these rules in every session. If a request conflicts with them, say so be
   slabs), raised lip, 5-stair + handrail + hubba with a bank up, quarter pipe (trimesh; prism
   caps fan from the BACK-BOTTOM corner — the only point that sees the whole curved solid),
   kinked rail, manual pads, low bank, planters, glowing lamps, benches.
-- KNOWN GAP: the 360 flip — the back-foot scoop's grip drag fights the front flick; both the
-  roll and spin checks are reported, not asserted.
+- KNOWN GAP (closed in M11 for the spin): the 360 flip.
+
+## M11 decisions (the scoop)
+
+- **Shove axis**: a scoop drives spin about a = normalize(UP − (UP·Z)Z) (Z = deck long axis,
+  `FootPhysics.shove_axis`) — the axis that swings the long axis round horizontally. Driving the
+  plain world vertical was the 360-flip bug: mid-pop the board is pitched ~50°, so the kickflip's
+  roll has a big vertical component and the scoop spent its torque cancelling the flip.
+- Scoop torque = I_world · (a · Δω) / τ (full tensor) so it changes only the shove spin.
+- **Edge presses obey end_down too**: a kick on the ground can't be pressed, not even its rail.
+  A diagonal back-foot snap "flicked" the tail rail on the strike tick (before popped_end is
+  set): an off-centre spike that held the tail on the ground and rolled the board the wrong way.
+- Test spin metric uses the same shove axis (pure kickflips used to read ~170–240° of "spin").
+- Test 360 flip uses real footwork: scoop and flick go the SAME screen direction (both toward the
+  heel side; backside scoop + kickflip). Opposite directions is hardflip-like footwork: the
+  nose swings under the flicking finger.
+- Tried and rejected: "sticky" foot contacts (contact moves only by finger sliding, with a leash)
+  to stop the front finger's projected point drifting as the board tips. Airborne/z-only it was
+  harmless to ollies but broke kickflips (normal 422° landing on its side, soft 92°). Don't repeat.
+- KNOWN GAP: the flip half of the 360 flip (~135° roll, lands on its side). Not a force bug:
+  torque-free motion of a spinning plate (Euler: pitch' ≈ shove·roll, roll' ≈ −pitch·shove)
+  turns the roll into pitch while the board shoves round in the short hang time. Lower scoop caps
+  (10, 13) trade spin for roll but still don't land it.
 
 ## Milestones
 
@@ -221,6 +242,8 @@ Follow these rules in every session. If a request conflicts with them, say so be
   360 flip: flip works, the shove-it spin is a known gap.
 - **M10 (done, partial)**: flatter, more controllable ollies; easier second-finger placement;
   bigger, more polished park. 360 flip still a known gap.
+- **M11 (done, partial)**: the scoop works (shove-it spin ~170–310°, asserted); it no longer
+  cancels the front flick. The 360 flip's flip half is still a known gap (lands on its side).
 - Flip tricks, catches and turns come only from the general finger physics; never add
   trick-specific code.
 
