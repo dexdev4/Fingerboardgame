@@ -1,334 +1,425 @@
-## Everything on screen except the world and the touch buttons:
-##  - top: oxygen / food / power / health bars, clock, place, objective
-##  - inventory (metal, ice, crystal, alloy) and usable items (tap to eat / use)
-##  - short messages ("+1 metal", warnings)
-##  - panels: story pages (chapters, logs), the ship (repairs + crafting), pause menu
-## UI only: it emits signals; Main does the game logic.
+## Everything on screen except the world and the touch buttons (all at 180×320, 8-bit style):
+##  - top: health / hunger / warmth / stamina bars, clock, place, current goal
+##  - buttons above the controls: CRAFT, BAG, BUILD (in the cabin), pause
+##  - short messages ("+3 Log")
+##  - one panel for: story pages, crafting, your bag, the chest, the pause menu
+##  - the build palette (pick furniture to place, or remove)
+## UI only: it emits signals; Main runs the game logic.
 class_name Hud
 extends CanvasLayer
 
-signal use_item(item: String)
-signal repair(id: String)
-signal craft(item: String)
-signal panel_closed
-signal new_world
+signal craft(id: String)
+signal use_item(id: String)
+signal open_craft
+signal open_bag
+signal toggle_build
+signal build_pick(id: String)
+signal build_remove
+signal chest_deposit
+signal chest_take
 signal paused(on: bool)
+signal quit_to_title
 
-const BAR_COLORS := {"oxygen": Color("57c7ff"), "food": Color("f2a65a"), "power": Color("f5e663"), "health": Color("ff5d6c")}
-const BAR_NAMES := {"oxygen": "O2", "food": "FOOD", "power": "POWER", "health": "HEALTH"}
-const ITEM_NAMES := {"metal": "Metal", "ice": "Ice", "crystal": "Crystal", "alloy": "Alloy",
-		"glowcap": "Glowcap", "canister": "O2 Canister", "cell": "Power Cell"}
-const ITEM_COLORS := {"metal": Color("e0b36a"), "ice": Color("a8e2f0"), "crystal": Color("ff5fd2"), "alloy": Color("66f0ff")}
-const USE_LABELS := {"glowcap": "Eat glowcap", "canister": "O2 canister", "cell": "Power cell"}
+const STATS := ["health", "hunger", "warmth", "stamina"]
+const STAT_COLORS := {"health": Pal.RED, "hunger": Pal.ORANGE, "warmth": Pal.YELLOW, "stamina": Pal.LIME}
 
 var t: GameTuning
-var _theme := Theme.new()
+var world_seed := 0
 var _root: Control
-var _bars := {}             # stat → [ProgressBar, Label]
+var _stats: Control
+var _stat_values := {}
 var _clock: Label
 var _place: Label
-var _objective: Label
-var _inv: Label
-var _use_buttons := {}      # item → Button
-var _toast_box: VBoxContainer
+var _goal: Label
+var _buttons: HBoxContainer
+var _build_btn: Button
+var _toasts: VBoxContainer
 var _panel: PanelContainer
 var _panel_title: Label
 var _panel_text: Label
 var _panel_body: VBoxContainer
-var _panel_queue: Array = []   # pending [title, text] story pages
-var _ship_mode := false
-var _pause_btn: Button
-## Shown in the pause panel (set by Main).
-var world_seed := 0
+var _scroll: ScrollContainer
+var _queue: Array = []        # pending story pages [title, text]
+var _mode := ""               # what the panel shows: story, craft, bag, chest, pause
+var _palette: PanelContainer
+var _palette_row: HBoxContainer
+var _palette_hint: Label
 
 
 func setup(tuning: GameTuning) -> void:
 	t = tuning
 	layer = 10
-	process_mode = Node.PROCESS_MODE_ALWAYS      # panels work while the game is paused
-	_theme.default_font_size = 24
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_root = Control.new()
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.theme = _theme
+	_root.theme = UiTheme.get_theme()
 	add_child(_root)
-	_build_top()
-	_build_items()
-	_build_toasts()
+	_stats = Control.new()
+	_stats.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stats.position = Vector2(3, 3)
+	_stats.size = Vector2(174, 18)
+	_stats.draw.connect(_draw_stats)
+	_root.add_child(_stats)
+	_clock = _label(Vector2(3, 23), Pal.CREAM)
+	_place = _label(Vector2(3, 33), Pal.TAN)
+	_goal = _label(Vector2(3, 43), Pal.YELLOW)
+	_goal.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_goal.custom_minimum_size.x = 174
+	_buttons = HBoxContainer.new()
+	_buttons.add_theme_constant_override("separation", 2)
+	_root.add_child(_buttons)
+	_hud_button("CRAFT", func(): open_craft.emit())
+	_hud_button("BAG", func(): open_bag.emit())
+	_build_btn = _hud_button("BUILD", func(): toggle_build.emit())
+	_hud_button("II", func(): show_pause())
+	_toasts = VBoxContainer.new()
+	_toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_toasts.alignment = BoxContainer.ALIGNMENT_BEGIN
+	_toasts.add_theme_constant_override("separation", 1)
+	_root.add_child(_toasts)
 	_build_panel()
+	_build_palette()
 	get_viewport().size_changed.connect(_layout)
 	_layout()
 
 
-# ---- Layout -----------------------------------------------------------------------------
-
-func _build_top() -> void:
-	var box := VBoxContainer.new()
-	box.name = "Top"
-	box.position = Vector2(16, 14)
-	box.add_theme_constant_override("separation", 4)
-	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(box)
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(grid)
-	for stat in ["oxygen", "food", "power", "health"]:
-		var row := HBoxContainer.new()
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var label := Label.new()
-		label.text = BAR_NAMES[stat]
-		label.custom_minimum_size.x = 92
-		label.add_theme_font_size_override("font_size", 20)
-		row.add_child(label)
-		var bar := ProgressBar.new()
-		bar.custom_minimum_size = Vector2(190, 22)
-		bar.show_percentage = false
-		var fill := StyleBoxFlat.new()
-		fill.bg_color = BAR_COLORS[stat]
-		fill.set_corner_radius_all(4)
-		var bg := StyleBoxFlat.new()
-		bg.bg_color = Color(0, 0, 0, 0.5)
-		bg.set_corner_radius_all(4)
-		bar.add_theme_stylebox_override("fill", fill)
-		bar.add_theme_stylebox_override("background", bg)
-		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(bar)
-		grid.add_child(row)
-		_bars[stat] = [bar, label]
-	_clock = _label(box, 22)
-	_place = _label(box, 22)
-	_objective = _label(box, 22)
-	_objective.add_theme_color_override("font_color", Color("ffe08a"))
-	_objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_inv = _label(box, 22)
-	_pause_btn = Button.new()
-	_pause_btn.text = " II "
-	_pause_btn.add_theme_font_size_override("font_size", 30)
-	_pause_btn.pressed.connect(func(): show_pause())
-	_root.add_child(_pause_btn)
+func _label(pos: Vector2, col: Color) -> Label:
+	var l := Label.new()
+	l.position = pos
+	l.add_theme_color_override("font_color", col)
+	l.add_theme_color_override("font_shadow_color", Pal.INK)
+	l.add_theme_constant_override("shadow_offset_x", 1)
+	l.add_theme_constant_override("shadow_offset_y", 1)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(l)
+	return l
 
 
-func _build_items() -> void:
-	var row := HBoxContainer.new()
-	row.name = "Items"
-	row.add_theme_constant_override("separation", 10)
-	_root.add_child(row)
-	for item in Inventory.USABLES:
-		var b := Button.new()
-		b.add_theme_font_size_override("font_size", 22)
-		b.pressed.connect(func(): use_item.emit(item))
-		row.add_child(b)
-		_use_buttons[item] = b
-
-
-func _build_toasts() -> void:
-	_toast_box = VBoxContainer.new()
-	_toast_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_toast_box.alignment = BoxContainer.ALIGNMENT_END
-	_root.add_child(_toast_box)
+func _hud_button(text: String, action: Callable) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.custom_minimum_size = Vector2(0, 14)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.pressed.connect(action)
+	_buttons.add_child(b)
+	return b
 
 
 func _build_panel() -> void:
 	_panel = PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.06, 0.05, 0.12, 0.95)
-	style.border_color = Color("7fe0d0")
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(14)
-	style.set_content_margin_all(22)
-	_panel.add_theme_stylebox_override("panel", style)
 	_panel.visible = false
 	_root.add_child(_panel)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 14)
+	col.add_theme_constant_override("separation", 4)
 	_panel.add_child(col)
 	_panel_title = Label.new()
-	_panel_title.add_theme_font_size_override("font_size", 34)
-	_panel_title.add_theme_color_override("font_color", Color("7fe0d0"))
+	_panel_title.add_theme_color_override("font_color", Pal.YELLOW)
 	_panel_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(_panel_title)
 	_panel_text = Label.new()
 	_panel_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_panel_text.add_theme_font_size_override("font_size", 25)
 	col.add_child(_panel_text)
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(_scroll)
 	_panel_body = VBoxContainer.new()
-	_panel_body.add_theme_constant_override("separation", 10)
-	col.add_child(_panel_body)
+	_panel_body.add_theme_constant_override("separation", 2)
+	_panel_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_scroll.add_child(_panel_body)
+
+
+func _build_palette() -> void:
+	_palette = PanelContainer.new()
+	_palette.visible = false
+	_root.add_child(_palette)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	_palette.add_child(col)
+	_palette_hint = Label.new()
+	_palette_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_palette_hint.add_theme_color_override("font_color", Pal.TAN)
+	col.add_child(_palette_hint)
+	var sc := ScrollContainer.new()
+	sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.custom_minimum_size.y = 30
+	col.add_child(sc)
+	_palette_row = HBoxContainer.new()
+	_palette_row.add_theme_constant_override("separation", 2)
+	sc.add_child(_palette_row)
 
 
 func _layout() -> void:
 	var size := get_viewport().get_visible_rect().size
-	(_root.get_node("Top") as Control).size.x = size.x - 120
-	_objective.custom_minimum_size.x = size.x - 140
-	_pause_btn.position = Vector2(size.x - 86, 14)
-	var items := _root.get_node("Items") as Control
-	items.position = Vector2(16, size.y - t.touch_bar_height - 70)
-	_toast_box.position = Vector2(16, size.y - t.touch_bar_height - 330)
-	_toast_box.size = Vector2(size.x - 32, 250)
-	_panel.position = Vector2(30, size.y * 0.12)
+	var bar_top := size.y - t.touch_bar_height
+	_buttons.position = Vector2(3, bar_top - 17)
+	_buttons.size = Vector2(size.x - 6, 14)
+	_toasts.position = Vector2(3, 64)   # under the goal line, clear of the ground and the cabin
+	_toasts.size = Vector2(size.x - 6, 60)
+	_palette.position = Vector2(2, 64)   # top of the screen: the cabin is drawn low, above the buttons
+	_palette.size = Vector2(size.x - 4, 0)
+	_palette.custom_minimum_size.x = size.x - 4
+	_palette_hint.custom_minimum_size.x = size.x - 14
 	_fit_panel()
 
 
-func _label(parent: Control, fs: int) -> Label:
-	var l := Label.new()
-	l.add_theme_font_size_override("font_size", fs)
-	l.add_theme_color_override("font_outline_color", Color.BLACK)
-	l.add_theme_constant_override("outline_size", 5)
-	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	parent.add_child(l)
-	return l
-
-
-# ---- Updates from Main -------------------------------------------------------------------
+# ---- Updates from Main -----------------------------------------------------------------------
 
 func update_stats(s: Survival) -> void:
-	for stat in _bars:
-		var bar: ProgressBar = _bars[stat][0]
-		bar.max_value = s.oxygen_cap if stat == "oxygen" else t.get(stat + "_max")
-		bar.value = s.get(stat)
-		# Flash the label red when a stat runs low.
-		var low := bar.value < bar.max_value * 0.2
-		var flash := low and fmod(Time.get_ticks_msec() / 400.0, 2.0) < 1.0
-		(_bars[stat][1] as Label).add_theme_color_override("font_color", Color("ff5d6c") if flash else Color.WHITE)
+	for stat in STATS:
+		_stat_values[stat] = s.get(stat) / t.get(stat + "_max")
+	_stats.queue_redraw()
 
 
-func update_info(clock: String, place: String, objective: String) -> void:
+func _draw_stats() -> void:
+	var blink := int(Time.get_ticks_msec() / 300) % 2 == 0
+	for i in STATS.size():
+		var stat: String = STATS[i]
+		var pos := Vector2((i % 2) * 88, (i / 2) * 9)
+		_stats.draw_texture(Sprites.icon("ui_" + stat), pos)
+		var f: float = _stat_values.get(stat, 1.0)
+		var bar := Rect2(pos + Vector2(10, 2), Vector2(74, 5))
+		_stats.draw_rect(bar.grow(1), Pal.INK)
+		_stats.draw_rect(bar, Color("2a2018"))
+		var col: Color = STAT_COLORS[stat]
+		if f < 0.2 and blink:
+			col = Pal.WHITE
+		_stats.draw_rect(Rect2(bar.position, Vector2(floorf(bar.size.x * f), bar.size.y)), col)
+		_stats.draw_rect(Rect2(bar.position, Vector2(floorf(bar.size.x * f), 1)), col.lightened(0.3))
+
+
+func update_info(clock: String, place: String, goal: String, at_home: bool) -> void:
 	_clock.text = clock
 	_place.text = place
-	_objective.text = "Goal: " + objective
+	_goal.text = "Goal: " + goal
+	_build_btn.disabled = not at_home
 
 
-func update_inventory(inv: Inventory) -> void:
-	var parts: Array[String] = []
-	for item in Inventory.RESOURCES:
-		parts.append("%s %d" % [ITEM_NAMES[item], inv.count(item)])
-	_inv.text = "   ".join(parts)
-	for item in _use_buttons:
-		var n := inv.count(item)
-		var b: Button = _use_buttons[item]
-		b.visible = n > 0
-		b.text = " %s ×%d " % [USE_LABELS[item], n]
-
-
-## A short message that fades out after a few seconds.
-func toast(text: String, color: Color = Color.WHITE) -> void:
-	var l := _label(_toast_box, 24)
-	l.text = text
+## A short message that fades away.
+func toast(text: String, color: Color = Pal.CREAM) -> void:
+	var l := Label.new()
+	l.text = PixelFont.clean(text)
 	l.add_theme_color_override("font_color", color)
+	l.add_theme_color_override("font_shadow_color", Pal.INK)
+	l.add_theme_constant_override("shadow_offset_x", 1)
+	l.add_theme_constant_override("shadow_offset_y", 1)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size.x = _toasts.size.x
+	_toasts.add_child(l)
 	var tw := create_tween()
-	tw.tween_interval(2.5)
-	tw.tween_property(l, "modulate:a", 0.0, 0.8)
+	tw.tween_interval(2.0)
+	tw.tween_property(l, "modulate:a", 0.0, 0.6)
 	tw.tween_callback(l.queue_free)
-	while _toast_box.get_child_count() > 6:
-		_toast_box.get_child(0).free()
+	while _toasts.get_child_count() > 5:
+		_toasts.get_child(0).free()
 
 
-# ---- Panels ------------------------------------------------------------------------------
+# ---- The panel ---------------------------------------------------------------------------------
 
 func panel_open() -> bool:
 	return _panel.visible
 
 
-## Queue a story page (chapter start, crew log, ...). Pages show one at a time; the game is
-## paused while one is open so you can read in peace.
-func show_story(title: String, text: String) -> void:
-	_panel_queue.append([title, text])
-	if not _panel.visible:
-		_next_page()
+func panel_mode() -> String:
+	return _mode if _panel.visible else ""
 
 
-func _next_page() -> void:
-	if _panel_queue.is_empty():
-		_close_panel()
-		return
-	var page: Array = _panel_queue.pop_front()
-	_open(page[0], page[1])
-	_button("Continue", _next_page)
-
-
-func _open(title: String, text: String) -> void:
-	_ship_mode = false
+func _open(mode: String, title: String, text: String, scrolling: bool = false) -> void:
+	_mode = mode
 	for c in _panel_body.get_children():
-		_panel_body.remove_child(c)   # out of the layout now; freed at the end of the frame
+		_panel_body.remove_child(c)
 		c.queue_free()
-	_panel_title.text = title
-	_panel_text.text = text
+	_panel_title.text = PixelFont.clean(title)
+	_panel_text.text = PixelFont.clean(text)
 	_panel_text.visible = text != ""
+	_scroll.custom_minimum_size.y = 180 if scrolling else 0
+	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO if scrolling else ScrollContainer.SCROLL_MODE_DISABLED
 	_panel.visible = true
 	_fit_panel()
 	paused.emit(true)
 
 
-## Shrink the panel to its content (wrapped text only knows its height once its width is set).
+func close_panel() -> void:
+	if not _queue.is_empty():   # story pages that arrived while another panel was open
+		_next_page()
+		return
+	_panel.visible = false
+	_mode = ""
+	paused.emit(false)
+
+
 func _fit_panel() -> void:
-	var w := get_viewport().get_visible_rect().size.x - 60.0
-	_panel_title.custom_minimum_size.x = w - 44.0
-	_panel_text.custom_minimum_size.x = w - 44.0
+	var size := get_viewport().get_visible_rect().size
+	var w := size.x - 8
+	_panel.position = Vector2(4, 30)
+	_panel_title.custom_minimum_size.x = w - 10
+	_panel_text.custom_minimum_size.x = w - 10
+	_panel_body.custom_minimum_size.x = w - 14
 	_panel.size = Vector2(w, 0)
 	_panel.reset_size.call_deferred()
 
 
-func _close_panel() -> void:
-	if not _panel_queue.is_empty():   # story pages that arrived while another panel was open
-		_next_page()
-		return
-	_panel.visible = false
-	_ship_mode = false
-	paused.emit(false)
-	panel_closed.emit()
-
-
-func _button(text: String, action: Callable, enabled: bool = true) -> Button:
+func _row_button(text: String, action: Callable, enabled: bool = true, icon: Texture2D = null) -> Button:
 	var b := Button.new()
-	b.text = text
+	b.text = PixelFont.clean(text)
 	b.disabled = not enabled
-	b.add_theme_font_size_override("font_size", 26)
-	b.custom_minimum_size.y = 64
-	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # long recipes wrap instead of widening the panel
+	b.icon = icon
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	b.custom_minimum_size = Vector2(0, 14)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.pressed.connect(action)
 	_panel_body.add_child(b)
 	_fit_panel()
 	return b
 
 
-## The ship panel: one row per repair and per craft, enabled when you can afford it.
-func show_ship(inv: Inventory, repaired: Dictionary) -> void:
-	_open("The Meridian", "Ship systems. Bring resources to repair them.")
-	_ship_mode = true
-	for id in Ship.REPAIRS:
-		var cost: Dictionary = t.repairs[id]
-		var info: Array = Ship.REPAIRS[id]
-		if repaired.has(id):
-			_button("%s: repaired" % info[0], func(): pass, false)
-		else:
-			_button("Repair %s (%s)\n%s" % [info[0], _cost_text(cost), info[1]],
-					func(): repair.emit(id), inv.can_afford(cost))
-	for item in Ship.CRAFTS:
-		var cost: Dictionary = t.crafts[item]
-		var info: Array = Ship.CRAFTS[item]
-		_button("Make %s (%s): %s" % [info[0], _cost_text(cost), info[1]],
-				func(): craft.emit(item), inv.can_afford(cost))
-	_button("Close", _close_panel)
+func _heading(text: String) -> void:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_color_override("font_color", Pal.YELLOW)
+	_panel_body.add_child(l)
 
 
-## Re-open the ship panel with fresh numbers (after a repair or craft).
-func refresh_ship(inv: Inventory, repaired: Dictionary) -> void:
-	if _ship_mode and _panel.visible:
-		show_ship(inv, repaired)
+## Queue a story page (chapters, journal pages...). Pages show one at a time and pause the game.
+func show_story(title: String, text: String) -> void:
+	_queue.append([title, text])
+	if not _panel.visible:
+		_next_page()
 
 
-func _cost_text(cost: Dictionary) -> String:
-	var parts: Array[String] = []
-	for item in cost:
-		parts.append("%d %s" % [int(cost[item]), ITEM_NAMES.get(item, item)])
-	return ", ".join(parts)
+func _next_page() -> void:
+	if _queue.is_empty():
+		close_panel()
+		return
+	var page: Array = _queue.pop_front()
+	_open("story", page[0], page[1])
+	_row_button("Continue", _next_page)
+
+
+## The craft list: every recipe, grouped; ones you can't make yet show why.
+func show_craft(inv: Inventory, cabin: Cabin, at_home: bool) -> void:
+	var where := "By hand"
+	if at_home:
+		var stations: Array[String] = []
+		if cabin.has_function("workbench"):
+			stations.append("workbench")
+		if cabin.has_function("hearth"):
+			stations.append("hearth")
+		where = "At home: " + (", ".join(stations) if not stations.is_empty() else "no workbench yet")
+	_open("craft", "Craft", where, true)
+	for group in Catalog.GROUPS:
+		_heading(group[0])
+		for id in group[1]:
+			var r: Dictionary = t.recipes[id]
+			var why := Crafting.block(t, id, inv, cabin, at_home)
+			var out := int(r.get("out", 1))
+			var line := "%s%s\n%s" % [Catalog.item_name(id), (" x%d" % out) if out > 1 else "", Crafting.cost_text(r.cost)]
+			if why != "" and why != "Not enough":
+				line += "\n(" + why + ")"
+			_row_button(line, func(): craft.emit(id), why == "", Catalog.icon(id) if Catalog.kind(id) != "upgrade" else null)
+	_row_button("Close", close_panel)
+
+
+func refresh_craft(inv: Inventory, cabin: Cabin, at_home: bool) -> void:
+	if panel_mode() == "craft":
+		var keep := _scroll.scroll_vertical
+		show_craft(inv, cabin, at_home)
+		_scroll.set_deferred("scroll_vertical", keep)
+
+
+## Your bag: everything you carry; food and medicine can be used from here.
+func show_bag(inv: Inventory) -> void:
+	_open("bag", "Bag", "" if not inv.items.is_empty() else "Empty.", true)
+	for id in inv.ids():
+		var k := Catalog.kind(id)
+		var n := inv.count(id)
+		var label := "%s x%d" % [Catalog.item_name(id), n]
+		match k:
+			"food":
+				_row_button(label + "  (eat: +%d food)" % int(t.food_values.get(id, 0)), func(): use_item.emit(id), true, Catalog.icon(id))
+			"medicine":
+				_row_button(label + "  (use: +%d health)" % int(t.heal_values.get(id, 0)), func(): use_item.emit(id), true, Catalog.icon(id))
+			"furniture":
+				_row_button(label + "  (place it with BUILD)", func(): pass, false, Catalog.icon(id))
+			_:
+				_row_button(label, func(): pass, false, Catalog.icon(id))
+	_row_button("Close", close_panel)
+
+
+func refresh_bag(inv: Inventory) -> void:
+	if panel_mode() == "bag":
+		show_bag(inv)
+
+
+## The chest in your cabin: what's in it, and buttons to store or take.
+func show_chest(chest: Inventory) -> void:
+	var lines: Array[String] = []
+	for id in chest.ids():
+		lines.append("%s x%d" % [Catalog.item_name(id), chest.count(id)])
+	_open("chest", "Chest", "Things in the chest are safe if you collapse in the woods.\n\n" +
+			("\n".join(lines) if not lines.is_empty() else "(empty)"), false)
+	_row_button("Put in materials and food", func(): chest_deposit.emit())
+	_row_button("Take everything", func(): chest_take.emit())
+	_row_button("Close", close_panel)
+
+
+func refresh_chest(chest: Inventory) -> void:
+	if panel_mode() == "chest":
+		show_chest(chest)
 
 
 func show_pause() -> void:
-	_open("Paused", "World seed: %d\n\nMove with the buttons at the bottom. Tap a tile near you to mine it (hold to keep digging). Tap plants, wreckage, pods and stones to pick them up or read them. Tap the ship to repair it and make supplies." % world_seed)
-	_button("Resume", _close_panel)
-	_button("New world (new seed)", func():
-		_close_panel()
-		new_world.emit())
+	_open("pause", "Paused", "World seed %d\n\nWalk with the buttons at the bottom. Tap a tree to chop it, the ground to dig, and plants, rocks, pages and stones to take or read them. Hold your finger down to keep working.\n\nIn your cabin, tap furniture to use it and press BUILD to arrange it." % world_seed)
+	_row_button("Resume", close_panel)
+	_row_button("Save and quit to title", func():
+		_panel.visible = false
+		_mode = ""
+		quit_to_title.emit())
+
+
+# ---- Build palette ----------------------------------------------------------------------------
+
+func show_palette(inv: Inventory, selected: String, removing: bool) -> void:
+	_palette.visible = true
+	_toasts.position.y = 120   # messages move below the palette while building
+	for c in _palette_row.get_children():
+		_palette_row.remove_child(c)
+		c.queue_free()
+	var any := false
+	for id in inv.ids():
+		if not Catalog.is_furniture(id):
+			continue
+		any = true
+		var b := Button.new()
+		b.icon = Catalog.icon(id)
+		b.text = "%d" % inv.count(id)
+		b.toggle_mode = true
+		b.button_pressed = id == selected
+		b.tooltip_text = Catalog.item_name(id)
+		b.pressed.connect(func(): build_pick.emit(id))
+		_palette_row.add_child(b)
+	var rm := Button.new()
+	rm.text = "Take\nback"
+	rm.toggle_mode = true
+	rm.button_pressed = removing
+	rm.pressed.connect(func(): build_remove.emit())
+	_palette_row.add_child(rm)
+	var done := Button.new()
+	done.text = "Done"
+	done.pressed.connect(func(): toggle_build.emit())
+	_palette_row.add_child(done)
+	if removing:
+		_palette_hint.text = "Tap a piece to put it back in your bag."
+	elif selected != "":
+		_palette_hint.text = "Tap the room to place: %s" % Catalog.item_name(selected)
+	elif any:
+		_palette_hint.text = "Pick something to place."
+	else:
+		_palette_hint.text = "Nothing to place. Craft furniture at your workbench."
+
+
+func hide_palette() -> void:
+	_palette.visible = false
+	_toasts.position.y = 64

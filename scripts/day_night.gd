@@ -1,14 +1,12 @@
-## Tessaris's day: time runs from 0 (dawn) to 1 (next dawn). The last `night_fraction` of each
-## day is night: darker and colder (the suit heater drains power outside the ship).
+## The Eldwood's day: time runs from 0 (dawn) to 1 (next dawn); the last `night_fraction` is a
+## cold, dark night. You can sleep through it in your bed from `sleep_from` onward.
 class_name DayNight
 extends RefCounted
 
-signal night_ended   ## fired at dawn after a night (a night survived)
+signal night_ended   ## dawn after a night (survived awake or slept through)
 
 var t: GameTuning
-## Fraction of the current day, 0..1.
 var time: float
-## Days since the crash (day 1 = the crash day).
 var day := 1
 
 
@@ -29,21 +27,30 @@ func is_night() -> bool:
 	return time >= 1.0 - t.night_fraction
 
 
-## Daylight 0..1: 1 at midday, 0 in the dead of night, with smooth dusk and dawn.
+func can_sleep() -> bool:
+	return time >= t.sleep_from
+
+
+## Sleep until dawn (only call when can_sleep()). Counts as a night survived.
+func sleep() -> void:
+	time = t.start_time
+	day += 1
+	night_ended.emit()
+
+
+## Daylight 0..1: 1 by day, 0 at night, with smooth dawn and dusk.
 func daylight() -> float:
 	var dusk := 1.0 - t.night_fraction
-	var edge := 0.05
-	var up := smoothstep(0.0, edge, time)                       # dawn brightening
-	var down := 1.0 - smoothstep(dusk - edge, dusk + edge * 0.5, time)   # dusk darkening
+	var up := smoothstep(0.0, 0.05, time)
+	var down := 1.0 - smoothstep(dusk - 0.05, dusk + 0.025, time)
 	return clampf(minf(up, down), 0.0, 1.0)
 
 
-## Light level for the world (CanvasModulate brightness): night_light at night, 1 by day.
 func light() -> float:
 	return lerpf(t.night_light, 1.0, daylight())
 
 
-## "Day 3, 14:20"-style clock for the HUD (a Tessaris day is shown as 24 hours, dawn = 06:00).
+## "Day 3 14:20" (a day is shown as 24 hours, dawn = 06:00).
 func clock_text() -> String:
 	var hours := fmod(time * 24.0 + 6.0, 24.0)
-	return "Day %d  %02d:%02d" % [day, int(hours), int(fmod(hours, 1.0) * 60.0)]
+	return "Day %d %02d:%02d" % [day, int(hours), int(fmod(hours, 1.0) * 60.0)]

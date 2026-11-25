@@ -1,6 +1,5 @@
-## Builds the TileSet in code: one atlas image with a textured square per tile type (Tiles ids
-## are atlas columns), plus a full-square collision polygon for every tile.
-## The textures are drawn from a fixed hash, so they look the same every run.
+## Builds the TileSet in code: an 8×8 pixel-art texture per tile type (Tiles ids are atlas
+## columns) and a full-square collision polygon for each. Drawn from the palette with a fixed hash.
 class_name TileSetBuilder
 extends RefCounted
 
@@ -12,7 +11,7 @@ static func build(t: GameTuning) -> TileSet:
 	ts.add_physics_layer()
 	ts.set_physics_layer_collision_layer(0, 1)
 	var src := TileSetAtlasSource.new()
-	src.texture = ImageTexture.create_from_image(_atlas(size))
+	src.texture = ImageTexture.create_from_image(atlas(size))
 	src.texture_region_size = Vector2i(size, size)
 	ts.add_source(src, 0)
 	var h := size * 0.5
@@ -25,62 +24,79 @@ static func build(t: GameTuning) -> TileSet:
 	return ts
 
 
-## The atlas: Tiles.COUNT squares side by side.
-static func _atlas(size: int) -> Image:
+static func atlas(size: int) -> Image:
 	var img := Image.create(size * Tiles.COUNT, size, false, Image.FORMAT_RGBA8)
 	for id in Tiles.COUNT:
-		_paint_tile(img, id, size)
+		_paint(img, id, id * size, size)
 	return img
 
 
-static func _paint_tile(img: Image, id: int, size: int) -> void:
-	var base: Color = Tiles.COLORS[id]
-	var accent: Color = Tiles.ACCENTS[id]
-	var ox := id * size
-	for y in size:
-		for x in size:
-			# Grainy base: each pixel slightly lighter/darker (fixed hash, salt = tile id).
-			var n := HashNoise.hash_f(7, x, y, id) - 0.5
-			var c := base.lightened(n * 0.12) if n > 0.0 else base.darkened(-n * 0.12)
-			# Soft bevel: lighter top-left edge, darker bottom-right edge.
-			if x == 0 or y == 0:
-				c = c.lightened(0.08)
-			elif x == size - 1 or y == size - 1:
-				c = c.darkened(0.18)
+## One tile: a base colour with a darker/lighter speckle (2-tone dither), plus details.
+static func _paint(img: Image, id: int, ox: int, n: int) -> void:
+	var base: Color
+	var dark: Color
+	var light: Color
+	match id:
+		Tiles.GRASS, Tiles.FOREST_FLOOR, Tiles.DIRT:
+			base = Pal.BARK; dark = Pal.BARK_DARK; light = Pal.WOOD
+		Tiles.CLAY:
+			base = Color("a8603a"); dark = Pal.BARK; light = Pal.ORANGE
+		Tiles.MOSSY_ROCK, Tiles.STONE, Tiles.COAL, Tiles.IRON_ORE, Tiles.GOLD:
+			base = Pal.STONE; dark = Pal.STONE_DARK; light = Pal.STONE_LIGHT
+		Tiles.DEEP_STONE:
+			base = Pal.STONE_DARK; dark = Color("26262b"); light = Pal.STONE
+		Tiles.BEDROCK:
+			base = Color("1f1d22"); dark = Pal.INK; light = Pal.STONE_DARK
+		Tiles.RUIN:
+			base = Pal.STONE_LIGHT; dark = Pal.STONE; light = Pal.WHITE
+	for y in n:
+		for x in n:
+			var r := HashNoise.hash_f(5, x, y, id)
+			var c := base
+			if r < 0.18:
+				c = dark
+			elif r > 0.9:
+				c = light
 			img.set_pixel(ox + x, y, c)
 	match id:
-		Tiles.ORE, Tiles.CRYSTAL:
-			_spots(img, ox, size, accent, id, 7 if id == Tiles.ORE else 5, id == Tiles.CRYSTAL)
-		Tiles.ICE:
-			for i in 3:   # frosty diagonal streaks
-				var y0 := 6 + i * 9
-				for x in size:
-					var y := y0 + x / 4
-					if y < size - 1:
-						img.set_pixel(ox + x, y, accent)
-		Tiles.ALLOY:
-			for x in range(4, size - 4):   # glowing circuit lines
-				img.set_pixel(ox + x, size / 2, accent)
-			for y in range(6, size / 2):
-				img.set_pixel(ox + 8, y, accent)
-				img.set_pixel(ox + size - 9, size - y, accent)
+		Tiles.GRASS, Tiles.FOREST_FLOOR:
+			var top := Pal.LEAF_LIGHT if id == Tiles.GRASS else Pal.LEAF
+			var tip := Pal.LIME if id == Tiles.GRASS else Pal.LEAF_LIGHT
+			for x in n:
+				img.set_pixel(ox + x, 0, top)
+				img.set_pixel(ox + x, 1, top if HashNoise.hash_f(6, x, 0, id) < 0.7 else base)
+				if HashNoise.hash_f(6, x, 1, id) < 0.35:
+					img.set_pixel(ox + x, 0, tip)
+				if id == Tiles.FOREST_FLOOR and HashNoise.hash_f(6, x, 2, id) < 0.2:
+					img.set_pixel(ox + x, 2, Pal.ORANGE)      # fallen needles
+		Tiles.MOSSY_ROCK:
+			for x in n:
+				if HashNoise.hash_f(7, x, 0, id) < 0.6:
+					img.set_pixel(ox + x, 0, Pal.LEAF)
+		Tiles.COAL:
+			_flecks(img, ox, n, Pal.INK, 9, 4)
+		Tiles.IRON_ORE:
+			_flecks(img, ox, n, Pal.ORANGE, 10, 3)
+		Tiles.GOLD:
+			_flecks(img, ox, n, Pal.YELLOW, 11, 3)
 		Tiles.RUIN:
-			for i in range(8, size - 8):   # carved glyph: a ring with a bar
-				var a := float(i - 8) / (size - 16) * TAU
-				img.set_pixel(ox + size / 2 + int(cos(a) * 7), size / 2 + int(sin(a) * 7), accent)
-				img.set_pixel(ox + size / 2, i, accent)
-		Tiles.REGOLITH, Tiles.SAND, Tiles.SOIL, Tiles.DUST:
-			_spots(img, ox, size, accent, id, 4, false)
+			for x in n:   # mortar lines: a brick pattern
+				img.set_pixel(ox + x, 3, Pal.STONE)
+				img.set_pixel(ox + x, 7, Pal.STONE)
+			for y in range(0, 3):
+				img.set_pixel(ox + 2, y, Pal.STONE)
+			for y in range(4, 7):
+				img.set_pixel(ox + 6, y, Pal.STONE)
+	# Slight edge shading so the tile grid reads.
+	for i in n:
+		var c := img.get_pixel(ox + i, n - 1)
+		img.set_pixel(ox + i, n - 1, c.darkened(0.15))
 
 
-## Scattered flecks (ore) or small diagonal shards (crystal) in the accent colour.
-static func _spots(img: Image, ox: int, size: int, accent: Color, salt: int, count: int, shards: bool) -> void:
+static func _flecks(img: Image, ox: int, n: int, col: Color, salt: int, count: int) -> void:
 	for i in count:
-		var cx := 3 + int(HashNoise.hash_f(11, i, 0, salt) * (size - 6))
-		var cy := 3 + int(HashNoise.hash_f(11, i, 1, salt) * (size - 6))
-		var r := 1 + int(HashNoise.hash_f(11, i, 2, salt) * 2.0)
-		for dy in range(-r, r + 1):
-			for dx in range(-r, r + 1):
-				var ok := dx == dy if shards else dx * dx + dy * dy <= r * r
-				if ok and cx + dx >= 0 and cx + dx < size and cy + dy >= 0 and cy + dy < size:
-					img.set_pixel(ox + cx + dx, cy + dy, accent)
+		var x := 1 + int(HashNoise.hash_f(salt, i, 0, 3) * (n - 3))
+		var y := 1 + int(HashNoise.hash_f(salt, i, 1, 3) * (n - 3))
+		img.set_pixel(ox + x, y, col)
+		img.set_pixel(ox + x + 1, y, col)
+		img.set_pixel(ox + x, y + 1, col.darkened(0.2))

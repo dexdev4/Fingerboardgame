@@ -1,13 +1,14 @@
-## The live world: streams generated chunks in and out around the player, applies the player's
-## changes (mined cells, collected pickups) on top of the generated terrain, and handles mining.
+## The live forest: streams generated chunks in and out around the player, applies the player's
+## changes (mined cells, felled trees, picked forage) on top of the generated world, and handles
+## digging.
 ##
 ## Chunks are generated on a worker thread (WorldGen.generate_chunk is pure), then written into
 ## the TileMapLayer on the main thread, so walking east never stutters.
 ## The world itself is never saved: only `mined` and `collected` are (rule 7).
+## (Felled trees and picked forage are "collected": they don't grow back yet.)
 class_name World
 extends Node2D
 
-signal pickup_spawned(p: Pickup)
 
 var t: GameTuning
 var gen: WorldGen
@@ -16,10 +17,10 @@ var map: TileMapLayer
 var mined := {}
 ## Mining progress on cells that aren't broken yet: Vector2i → hits so far.
 var damage := {}
-## Pickups already taken: id → true.
+## Objects taken (trees felled, forage picked, pages read): id → true.
 var collected := {}
 
-var _loaded := {}      # cx → {"pickups": Array[Pickup]}
+var _loaded := {}      # cx → {"objects": Array[WorldObject]}
 var _pending := {}     # cx → WorkerThreadPool task id
 var _results := {}     # cx → PackedInt32Array (filled by worker threads)
 var _mutex := Mutex.new()
@@ -101,7 +102,7 @@ func _collect_finished() -> void:
 				_apply(cx, tiles)
 
 
-## Write a generated chunk into the tile map (minus mined cells) and spawn its pickups.
+## Write a generated chunk into the tile map (minus mined cells) and spawn its objects.
 func _apply(cx: int, tiles: PackedInt32Array) -> void:
 	var w := t.chunk_width
 	var x0 := cx * w
@@ -112,16 +113,15 @@ func _apply(cx: int, tiles: PackedInt32Array) -> void:
 		var cell := Vector2i(x0 + i % w, t.world_top + i / w)
 		if not mined.has(cell):
 			map.set_cell(cell, 0, Vector2i(id, 0))
-	var pickups: Array[Pickup] = []
-	for data in gen.pickups_in_chunk(cx):
+	var objects: Array[WorldObject] = []
+	for data in gen.objects_in_chunk(cx):
 		if collected.has(data.id):
 			continue
-		var p := Pickup.new()
-		p.setup(data, t)
-		add_child(p)
-		pickups.append(p)
-		pickup_spawned.emit(p)
-	_loaded[cx] = {"pickups": pickups}
+		var o := WorldObject.new()
+		o.setup(data, t)
+		add_child(o)
+		objects.append(o)
+	_loaded[cx] = {"objects": objects}
 	var tops := PackedInt32Array()
 	for i in w:
 		var x := x0 + i
@@ -135,9 +135,9 @@ func _unload(cx: int) -> void:
 	for x in range(cx * w, (cx + 1) * w):
 		for y in range(t.world_top, t.world_bottom):
 			map.erase_cell(Vector2i(x, y))
-	for p: Pickup in _loaded[cx].pickups:
-		if is_instance_valid(p):
-			p.queue_free()
+	for o: WorldObject in _loaded[cx].objects:
+		if is_instance_valid(o):
+			o.queue_free()
 	_loaded.erase(cx)
 	_surfaces.erase(cx)
 	_backdrop.queue_redraw()
@@ -154,32 +154,49 @@ func tile_at(cell: Vector2i) -> int:
 	return gen.tile_at(cell.x, cell.y)
 
 
-## Hit a cell once with the mining tool. Returns "" if nothing broke, "broken" for a tile with no
-## drop, otherwise the dropped item name ("metal", "ice", ...). Unbreakable tiles return "".
-func hit(cell: Vector2i) -> String:
+## Hits needed to break a tile (0 = never).
+func hits_needed(id: int) -> int:
+	var tr := Tiles.tier(id)
+	return t.tier_hits[tr] if tr >= 0 else 0
+
+
+## Dig at a cell once, with a pick of `tier` (0 = bare hands) doing `dmg` per hit.
+## Returns {"result": "none" | "too_hard" | "hit" | "broken", "drop": item or ""}.
+func dig(cell: Vector2i, tier: int, dmg: int) -> Dictionary:
 	var id := tile_at(cell)
-	var need := Tiles.hits(id, t)
-	if need <= 0:
-		return ""
-	var done: int = damage.get(cell, 0) + 1
-	if done < need:
+	var tr := Tiles.tier(id)
+	if id == Tiles.AIR:
+		return {"result": "none", "drop": ""}
+	if tr < 0 or tr > tier:
+		return {"result": "too_hard", "drop": ""}
+	var done: int = damage.get(cell, 0) + dmg
+	if done < hits_needed(id):
 		damage[cell] = done
 		_cracks.queue_redraw()
-		return ""
+		return {"result": "hit", "drop": ""}
 	damage.erase(cell)
 	mined[cell] = true
 	map.erase_cell(cell)
 	_cracks.queue_redraw()
-	var d := Tiles.drop(id)
-	return d if d != "" else "broken"
+	return {"result": "broken", "drop": Tiles.drop(id)}
 
 
-## Mark a pickup as taken and remove it from the world.
-func take(p: Pickup) -> void:
-	collected[p.id] = true
+## Mark an object as taken (felled / picked / read) and remove it from the world.
+func take(o: WorldObject) -> void:
+	collected[o.id] = true
 	for cx in _loaded:
-		_loaded[cx].pickups.erase(p)
-	p.queue_free()
+		_loaded[cx].objects.erase(o)
+	o.queue_free()
+
+
+## Every object currently in the world.
+func objects() -> Array[WorldObject]:
+	var out: Array[WorldObject] = []
+	for cx in _loaded:
+		for o: WorldObject in _loaded[cx].objects:
+			if is_instance_valid(o) and not o.is_queued_for_deletion():
+				out.append(o)
+	return out
 
 
 ## The cave back wall: a dark strip per column, from one tile under the surface down to the
@@ -192,22 +209,20 @@ func _draw_backdrop() -> void:
 		var x0 := cx * t.chunk_width
 		for i in tops.size():
 			var y := (tops[i] + 1) * s
-			_backdrop.draw_rect(Rect2((x0 + i) * s, y, s, bottom - y), Color("1d1622"))
+			_backdrop.draw_rect(Rect2((x0 + i) * s, y, s, bottom - y), Color("1f1a17"))
 
 
-## Cracks over half-mined cells (visual only).
+## Pixel cracks over half-dug cells (visual only).
 func _draw_cracks() -> void:
 	var s := float(t.tile_size)
 	for cell: Vector2i in damage:
-		var need := Tiles.hits(tile_at(cell), t)
-		var f := float(damage[cell]) / maxf(need, 1)
+		var f := float(damage[cell]) / maxf(hits_needed(tile_at(cell)), 1)
 		var o := Vector2(cell) * s
-		var c := Color(0, 0, 0, 0.35 + 0.4 * f)
-		_cracks.draw_line(o + Vector2(s * 0.5, 2), o + Vector2(s * 0.35, s * 0.55), c, 2.0)
-		_cracks.draw_line(o + Vector2(s * 0.35, s * 0.55), o + Vector2(s * 0.6, s - 2), c, 2.0)
+		for p in [Vector2(4, 1), Vector2(3, 2), Vector2(3, 3), Vector2(4, 4), Vector2(5, 5), Vector2(4, 6)]:
+			_cracks.draw_rect(Rect2(o + p, Vector2.ONE), Pal.INK)
 		if f >= 0.5:
-			_cracks.draw_line(o + Vector2(2, s * 0.4), o + Vector2(s * 0.35, s * 0.55), c, 2.0)
-			_cracks.draw_line(o + Vector2(s * 0.35, s * 0.55), o + Vector2(s - 2, s * 0.3), c, 2.0)
+			for p in [Vector2(1, 3), Vector2(2, 3), Vector2(5, 2), Vector2(6, 1)]:
+				_cracks.draw_rect(Rect2(o + p, Vector2.ONE), Pal.INK)
 
 
 func _exit_tree() -> void:

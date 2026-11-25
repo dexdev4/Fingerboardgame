@@ -1,27 +1,29 @@
 ; Engine configuration file.
-; Godot 4.5+. Tessaris: a procedurally generated survival side-scroller.
+; Godot 4.5+. Eldwood: a rustic 8-bit survival side-scroller in a medieval forest.
 ; Android, portrait (held upright), touch controls, 2D physics at a fixed 60 Hz.
 
 config_version=5
 
 [application]
 
-config/name="Tessaris"
-config/description="Crash-landed on an alien planet: survive, explore a procedurally generated world, uncover its story."
+config/name="Eldwood"
+config/description="A rustic 8-bit survival side-scroller: make your character, build up your forest cabin, uncover the old forest's story."
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.5", "Mobile")
 config/icon="res://icon.svg"
 
 [display]
 
-; Portrait. The viewport is 720×1280 design pixels, stretched to the phone (wider/taller phones
-; see a little more world).
-window/size/viewport_width=720
-window/size/viewport_height=1280
+; 8-bit look: the whole game renders at 180×320 real pixels (portrait), scaled up by a WHOLE
+; number (×4 on a 720-wide phone, ×6 on 1080, ×8 on 1440) so every pixel stays a crisp square.
+; Taller phones see a few more rows (aspect = expand).
+window/size/viewport_width=180
+window/size/viewport_height=320
 window/size/window_width_override=540
 window/size/window_height_override=960
-window/stretch/mode="canvas_items"
+window/stretch/mode="viewport"
 window/stretch/aspect="expand"
+window/stretch/scale_mode="integer"
 window/handheld/orientation=1
 window/energy_saving/keep_screen_on=true
 
@@ -55,7 +57,9 @@ common/physics_interpolation=true
 [rendering]
 
 renderer/rendering_method="mobile"
+environment/defaults/default_clear_color=Color(0.105882, 0.0784314, 0.0627451, 1)
 renderer/rendering_method.mobile="mobile"
 textures/canvas_textures/default_texture_filter=0
 textures/vram_compression/import_etc2_astc=true
-2d/snap/snap_2d_transforms_to_pixel=false
+2d/snap/snap_2d_transforms_to_pixel=true
+2d/snap/snap_2d_vertices_to_pixel=true

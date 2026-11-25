@@ -1,72 +1,96 @@
-# Tessaris
+# Eldwood
 
-A procedurally generated survival side-scroller with a developing story, for Android phones held
-upright (portrait). Made with Godot 4.5 and GDScript.
+A rustic 8-bit survival side-scroller set in a great medieval forest. Made with Godot 4.5 and
+GDScript for Android phones held upright (portrait).
 
-Your section of the survey ship *Meridian* has crashed on the alien planet Tessaris. Keep your
-suit alive, repair the wreck as your base, and travel east through a world generated from a
-seed, following your scattered crew and uncovering what happened to the planet.
+Make your character, then take up the old woodsman's cabin at the edge of the Eldwood. Chop,
+forage and dig for materials, make the cabin your own with everything you craft, survive the
+cold nights, and follow the story of what happened to old Aldous and what lives in the forest.
 
-> This repository used to hold a fingerboard game. It was replaced by Tessaris; the old code is
-> still in the git history.
+> This repository was first a fingerboard game, then an alien survival game called Tessaris.
+> Both were replaced by Eldwood; their code is still in the git history.
 
-## How to play
+## Getting started
+
+1. **Title screen:** New game (or Continue).
+2. **Character creator:** pick your name (or roll a random one with "?"). Choose your skin, hair
+   style and colour, beard, hat, tunic, trousers, cloak and cloak colour, and boots.
+3. **Origin:** pick the background you start with.
+
+| Origin | You start with |
+|---|---|
+| Woodcutter | A stone axe and some logs |
+| Stonemason | A stone pickaxe and stone |
+| Herbalist | Herbs, berries and a poultice |
+| Wanderer | Torches, and you feel the night cold less |
+
+You wake up in a small, bare cabin with a straw bed and one window.
+
+## Controls
 
 | Control | What it does |
 |---|---|
-| **◀ ▶** (bottom left) | Walk. Slide your thumb between them to turn without lifting it. |
-| **JUMP** (bottom right) | Jump (works for a moment after running off a ledge). |
-| **Tap a tile** near you | Mine it. Hold your finger on it to keep digging. Ore, ice, crystal and alloy go into your pack. |
-| **Tap a plant / wreckage** | Pick it up: air bladders refill oxygen, glowcaps are food, wreckage gives metal (and sometimes a power cell). |
-| **Tap a crew pod / monolith** | Read it. The story unfolds. |
-| **Tap the ship** (when next to it) | Repair systems and make supplies. |
-| **Item buttons** (above the controls) | Eat a glowcap, use an O2 canister or a power cell. |
-| **II** (top right) or the back button | Pause: resume, see the world seed, or start a new world. |
+| **◀ ▶** / **JUMP** (bottom) | Walk and jump. Two fingers work at once. |
+| **Tap a tree** | Chop it (hold your finger down to keep chopping). An axe chops faster. |
+| **Tap the ground** | Dig. Soil and clay by hand; stone, coal and iron need a stone pickaxe; deep stone and gold need an iron one. |
+| **Tap plants and rocks** | Pick berries, mushrooms, flax and herbs; collect loose stones. |
+| **Tap pages and runestones** | Read them. The story unfolds. |
+| **Tap your cabin / its door** | Go in / out. |
+| **Tap furniture** (inside) | Bed: sleep (after dusk). Workbench / hearth: craft. Chest: store things. |
+| **CRAFT** | Make things. What's available depends on where you are: by hand, at your workbench, or at your hearth. |
+| **BAG** | See what you carry; eat food and use medicine. |
+| **BUILD** (inside) | Arrange your cabin: pick a piece, tap where it goes; "Take back" returns pieces to your bag. |
+| **II** / back button | Pause; save and quit to the title. |
 
 Desktop testing: A/D or arrow keys to walk, Space/W/↑ to jump, click to tap.
 
-## Survival
+## Surviving
 
-- **Oxygen** drains outside the ship. Refill it at the ship, from air-bladder plants, or with O2 canisters.
-- **Food** drains slowly. Eat glowcaps.
-- **Power** runs your drill (each hit), your headlamp (at night and underground) and your heater
-  (at night, outside the ship). Refill it at the ship or with power cells.
-- **Health**: running out of oxygen, food, or power at night hurts. It heals when you're well
-  supplied, and faster at the ship. Hard landings hurt too.
-- If health reaches zero, the suit drags you back to the ship and you lose half of what you were carrying.
-- **Day and night**: a day is 5 minutes and the last third of it is a cold, dark night.
+- **Health** drops when you're starving or freezing, and from hard falls. It heals while you're fed and warm.
+- **Hunger:** eat berries, apples, mushrooms, or stew cooked at your hearth.
+- **Warmth:** nights are cold outside. The cabin warms you, and a hearth warms you fast.
+- **Stamina:** every chop and dig costs some; rest a moment to get it back.
+- **Torches** light the dark (nights and underground). One burns for 90 seconds while it's dark.
+- **Sleeping** in your bed after dusk skips the night. The more comfortable your cabin, the more health you recover.
+- **Collapsing:** you wake up at home and lose half the materials you were carrying. Things in your chest are safe.
 
-## The ship
+## Your cabin
 
-| Repair | Cost | Effect |
-|---|---|---|
-| O2 Scrubber | 4 metal, 3 ice | Fast oxygen refill at the ship |
-| Solar Array | 6 metal, 3 crystal | Fast power refill at the ship |
-| Suit Tank | 5 metal, 4 ice, 2 crystal | +80 oxygen capacity |
-| Long-range Antenna | 10 metal, 6 crystal, 4 alloy | ...send the signal |
+Craft furniture and decor at the workbench, then place them anywhere with BUILD:
 
-You can also make O2 canisters (2 ice) and power cells (2 crystal).
+- **Furniture:** bed (straw or wooden), hearth, workbench, chest, table, chair, stool,
+  bookshelf, barrel, potted herbs, candle stand.
+- **On the walls:** windows, a shelf, a banner, a tapestry, a wall candle, a lantern, drying herbs.
+- **On the floor:** a rug and a woven mat.
+- **Upgrades:**
+  - plank or stone floor
+  - planed or plastered walls
+  - a shingle roof
+  - two extensions that make the cabin wider
 
-## The world
+Furniture and upgrades add **comfort**. Hearths, candles, lanterns and windows add **light**. From
+outside you can see your roof, the chimney smoking once you have a hearth, and the windows
+glowing at night.
 
-Every world comes from a seed: the same seed always makes the same world.
+## The forest
 
-- **Biomes**, going east: Crash Plains, Crystal Fields (tall hills, energy crystal), Fungal
-  Lowlands (glowcaps, air plants), Ruins Expanse (pillars, alien alloy, monoliths). After the ruins,
-  the biomes keep repeating, with different terrain each time.
-- **Underground**: caves, metal ore, ice, crystal and alloy veins, and deep rock that gets harder and darker.
-- A crater wall closes off the west, so the story always leads east.
-- The world is generated in chunks on a background thread as you travel.
+Every forest comes from a seed: the same seed always makes the same forest. Going east from
+your cabin:
+
+1. **The Meadow:** birches, berries, flax, loose rocks, clay under the turf.
+2. **Pinewood:** dense pines and mushrooms.
+3. **Elderwood:** great oaks (with apples), herbs and mushrooms.
+4. **Stonecrag:** rocky hills, coal and iron, old ruined walls and runestones.
+
+After that the biomes keep repeating. Underground there are caves and deeper, harder stone with gold.
 
 ## The story
 
-Ten chapters, each with a goal (repair the scrubber, find a crew pod, survive the night, and so
-on), lead to a signal and an answer. Two lore threads run alongside: **crew logs** (what happened
-to your crew) and **monolith inscriptions** (the planet's past). Pods and monoliths always reveal
-the *next* entry, so the story reads in order wherever you find them. All the text is in
-`story/story.json`.
+Ten chapters, each with a goal, run from building your first workbench to the mystery of the
+First Root. The pages of Aldous's journal and the runestones tell two threads, always in order
+wherever you find them. All the text is in `story/story.json`.
 
-Your game autosaves every 30 seconds, when you pause, and when you leave the app.
+The game autosaves every 30 seconds, when you pause or sleep, and when you leave the app.
 
 ## Run it
 
@@ -75,20 +99,30 @@ Your game autosaves every 30 seconds, when you pause, and when you leave the app
 
 ### On your Android phone
 
-One-time setup, the same as before: in Godot, **Editor → Manage Export Templates → Download and
-Install**; install **OpenJDK 17** and the **Android SDK** (Android Studio's SDK Manager: Platform-Tools,
-Build-Tools 35.x, Platform 35, Command-line Tools); set both paths in **Editor → Editor Settings →
-Export → Android** (the JDK path is the JDK 17 *folder*); enable USB debugging on the phone.
+One-time setup:
 
-Then either click the Android icon in the editor's top-right run bar (one-click deploy), or
-**Project → Export… → Android → Export Project** (`build/tessaris.apk`) and
-`adb install -r build/tessaris.apk`. The preset is set up for arm64, portrait, full screen.
+1. In Godot: **Editor → Manage Export Templates → Download and Install**.
+2. Install **OpenJDK 17** and the **Android SDK**. In Android Studio's SDK Manager, install
+   Platform-Tools, Build-Tools 35.x, Platform 35 and Command-line Tools.
+3. Set both paths in **Editor → Editor Settings → Export → Android**. The JDK path is the JDK 17
+   *folder*, not java.exe.
+4. Enable USB debugging on the phone.
+
+Then either:
+- click the Android icon in the editor's top-right run bar (one-click deploy), or
+- use **Project → Export… → Android → Export Project** (`build/eldwood.apk`), then run
+  `adb install -r build/eldwood.apk`.
 
 ## Tuning
 
-Every number (world shape, biome sizes, ore rarity, player speed, drain rates, repair costs, day
-length, camera) is in **`tuning/game_tuning.tres`**: select it in the FileSystem dock and edit it in
-the Inspector. Set `default_seed` to play one fixed world.
+Every number is in **`tuning/game_tuning.tres`**, including:
+- world shape, biome lengths, tree density and ore rarity
+- speeds and survival rates
+- every recipe and its cost
+- food values, comfort and light values
+- background starting kits
+
+Set `default_seed` to play one fixed forest.
 
 ## Tests
 
@@ -97,36 +131,49 @@ godot --headless --path . -s res://tests/test_game.gd
 ```
 
 The headless tests check:
-- World determinism and chunk independence.
-- The crash site and the crater wall.
-- Biomes, caves and resources, and that the first repair is possible near the ship.
-- Survival rates and that the story advances in order.
-- In the real game scene: walking, jumping, mining that stays mined after a chunk reloads,
-  pickups that don't come back, repairs, and a save/load roundtrip.
+- World determinism, and the cabin's clearing.
+- Biomes, resources and forest density near home.
+- Survival rates.
+- Cabin placement rules.
+- Crafting stations, tool tiers and upgrades.
+- Story order, and that every character option builds a sprite.
+- The real game: starting in the cabin, the door, walking, chopping, digging, placing a
+  workbench, sleeping, and a save/load roundtrip.
 
 ## Layout
 
 ```
-scenes/main.tscn        the game (everything else is created in code)
-tuning/game_tuning.tres all tuning values (script: scripts/game_tuning.gd)
-story/story.json        chapters, crew logs, monolith inscriptions
+scenes/main.tscn          the game (everything else is created in code)
+tuning/game_tuning.tres   all tuning values (script: scripts/game_tuning.gd)
+story/story.json          chapters, journal pages, runestones
 scripts/
-  main.gd               wires everything; tapping, survival ticks, repairs, death, saving
-  hash_noise.gd         deterministic integer-hash noise
-  world_gen.gd          biomes, terrain, caves, ores, ruins, pickups (pure, seeded)
-  world.gd              chunk streaming (worker threads), mining, mined/collected state
-  tiles.gd              tile types: colours, hardness, drops
-  tileset_builder.gd    tile atlas + collision built in code
-  player.gd             explorer movement, headlamp, drawing
-  touch_controls.gd     portrait multitouch buttons
-  survival.gd           oxygen, food, power, health
-  inventory.gd          resources and usable items
-  ship.gd               the crashed ship (base): range, repairs, drawing
-  day_night.gd          time of day, light level
-  story.gd              chapters and ordered lore
-  hud.gd                bars, info, items, messages, story/ship/pause panels
-  background.gd         sky, planet, moons, parallax mountains
-  pickup.gd             plants, wreckage, pods, monoliths
-  save_game.gd          save file (seed + changes only)
-tests/test_game.gd      headless tests
+  main.gd                 title → creator → game; tapping, survival, building, sleeping, saving
+  title_screen.gd         title screen
+  character_creator.gd    character creation menu
+  character_look.gd       layered 8×14 character sprite and options
+  palette.gd              the colour palette
+  pixel_font.gd           5×7 bitmap font
+  ui_theme.gd             8-bit UI theme
+  sprites.gd              pixel-art icons, furniture, forage, procedural trees
+  hash_noise.gd           deterministic integer-hash noise
+  world_gen.gd            biomes, terrain, caves, ores, ruins, trees, forage, lore (seeded)
+  world.gd                chunk streaming, digging, felled/picked state
+  world_object.gd         trees, forage, pages, runestones
+  tiles.gd                tile types, hardness, drops
+  tileset_builder.gd      8×8 tile art and collision
+  cabin.gd                cabin data: placement rules, upgrades, comfort, light
+  cabin_interior.gd       the walkable room, furniture drawing, build mode
+  cabin_exterior.gd       the cabin seen from outside
+  catalog.gd              item names, kinds, furniture footprints, origins
+  crafting.gd             recipe rules (stations, tool tiers, upgrades)
+  survival.gd             health, hunger, warmth, stamina
+  inventory.gd            bag and chest
+  day_night.gd            time of day, sleep
+  story.gd                chapters and ordered lore
+  player.gd               movement, sprite, torch light
+  touch_controls.gd       portrait multitouch buttons
+  hud.gd                  bars, info, panels, build palette
+  background.gd           sky, sun/moon, parallax hills and tree lines
+  save_game.gd            save file (seed + changes)
+tests/test_game.gd        headless tests
 ```

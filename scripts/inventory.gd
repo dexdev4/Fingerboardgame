@@ -1,12 +1,8 @@
-## What the explorer carries: item name → count.
-## Resources: metal, ice, crystal, alloy. Usables: glowcap (food), canister (oxygen), cell (power).
+## A bag of items: item id → count. Used for what you carry and for the cabin chest.
 class_name Inventory
 extends RefCounted
 
 signal changed
-
-const RESOURCES := ["metal", "ice", "crystal", "alloy"]
-const USABLES := ["glowcap", "canister", "cell"]
 
 var items := {}
 
@@ -16,11 +12,14 @@ func count(item: String) -> int:
 
 
 func add(item: String, n: int = 1) -> void:
+	if n == 0:
+		return
 	items[item] = count(item) + n
+	if items[item] <= 0:
+		items.erase(item)
 	changed.emit()
 
 
-## True if every item in `cost` ({item: n}) is carried in that amount.
 func can_afford(cost: Dictionary) -> bool:
 	for item in cost:
 		if count(item) < int(cost[item]):
@@ -28,27 +27,58 @@ func can_afford(cost: Dictionary) -> bool:
 	return true
 
 
-## Remove `cost`; returns false (and removes nothing) if it isn't affordable.
 func spend(cost: Dictionary) -> bool:
 	if not can_afford(cost):
 		return false
 	for item in cost:
-		items[item] = count(item) - int(cost[item])
+		add(item, -int(cost[item]))
 	changed.emit()
 	return true
 
 
-## Lose `fraction` of every resource (rounded down) — what a suit failure costs.
-## Returns what was lost.
+## Everything carried, sorted by name (for lists).
+func ids() -> Array:
+	var out := items.keys()
+	out.sort()
+	return out
+
+
+## Lose `fraction` of every MATERIAL (rounded down) — what collapsing in the woods costs.
 func lose_fraction(fraction: float) -> Dictionary:
 	var lost := {}
-	for item in RESOURCES:
+	for item in items.keys():
+		if Catalog.kind(item) != "material":
+			continue
 		var n := int(floor(count(item) * fraction))
 		if n > 0:
-			items[item] = count(item) - n
+			add(item, -n)
 			lost[item] = n
 	changed.emit()
 	return lost
+
+
+## Move every material and food into `other` (the chest). Tools, furniture and torches stay.
+func deposit_into(other: Inventory) -> int:
+	var moved := 0
+	for item in items.keys():
+		var k := Catalog.kind(item)
+		if k == "material" or k == "food" or k == "medicine":
+			var n := count(item)
+			other.add(item, n)
+			add(item, -n)
+			moved += n
+	return moved
+
+
+## Move everything from this bag into `other`.
+func take_all_into(other: Inventory) -> int:
+	var moved := 0
+	for item in items.keys():
+		var n := count(item)
+		other.add(item, n)
+		add(item, -n)
+		moved += n
+	return moved
 
 
 func to_dict() -> Dictionary:
@@ -58,5 +88,6 @@ func to_dict() -> Dictionary:
 func from_dict(d: Dictionary) -> void:
 	items.clear()
 	for k in d:
-		items[k] = int(d[k])
+		if int(d[k]) > 0:
+			items[k] = int(d[k])
 	changed.emit()

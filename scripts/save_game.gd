@@ -1,11 +1,12 @@
-## Saving and loading (rule 7). The world is regenerated from its seed, so a save only holds the
-## seed and what the player changed: mined cells, collected pickups, inventory, suit stats,
-## story progress, ship repairs, time of day and where the player is.
+## Saving and loading (rule 7). The forest is regenerated from its seed, so a save only holds the
+## seed and what the player changed: your character, mined cells, felled trees and picked forage,
+## your bag and chest, your stats, the cabin (upgrades + every placed item), story progress, the
+## time of day and where you are.
 class_name SaveGame
 extends RefCounted
 
-const PATH := "user://tessaris_save.json"
-const VERSION := 1
+const PATH := "user://eldwood_save.json"
+const VERSION := 2
 
 
 static func exists() -> bool:
