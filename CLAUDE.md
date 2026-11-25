@@ -1,87 +1,69 @@
-# CLAUDE.md — Fingerboard game rules
+# CLAUDE.md — Eldwood game rules
 
-Realistic finger skateboarding (fingerboard) game for Android, Godot 4 (4.5+), GDScript.
-The user is a real skater: controls must feel intuitive and predictable to skaters.
+Eldwood: a rustic 8-bit survival side-scroller set in a great medieval forest, for Android,
+Godot 4 (4.5+), GDScript. You design your character, start in a small cabin at the forest's
+edge, gather materials from a procedurally generated forest, customise the cabin with what you
+craft, survive the cold nights, and follow a developing story into the woods.
+(This repository was first a fingerboard game, then "Tessaris" (alien survival); both were
+replaced at the user's request and are in git history.)
 Follow these rules in every session. If a request conflicts with them, say so before coding.
 
-## Core control rules (non-negotiable)
+## Core rules
 
-1. **Two fingers are the skater's feet.**
-   - A touch that lands on the **back half** of the board = **back foot** (tail).
-   - A touch that lands on the **front half** = **front foot** (front bolts).
-   - Assignment happens once, when the touch lands, by raycasting from the screen to the board.
-2. **No gesture recognition. No canned trick animations.**
-   - The board is a `RigidBody3D`. Every physics tick, each finger's position and velocity
-     *on the board* (board space) is converted into forces/torques applied *at that point*.
-   - Never write code like `if swipe_matches("ollie"): play_ollie()`. Tricks must emerge from physics.
-   - Detecting physical *events* (tail strike, wheels touching down) for haptics/UI is fine;
-     those detections must never add trick-shaped motion.
-3. **Determinism: same input → same result.**
-   - Fixed physics ticks (`BoardTuning.physics_ticks_per_second`). All game physics runs in
-     `_integrate_forces` / `_physics_process`, never in `_process`.
-   - Finger velocity is measured over a fixed number of physics ticks, not wall-clock time.
-   - Screen↔world ray math uses our own camera math (`ScreenMath`) on the camera's physics-tick
-     transform, so rendering/interpolation never changes physics.
-   - Anything that runs in `_process` (debug overlay, haptics) must not affect physics.
-4. **All tuning values live in one resource**: `res://tuning/board_tuning.tres`
-   (script `scripts/board_tuning.gd`, class `BoardTuning`). No magic tuning numbers in other
-   scripts — add an `@export` field to `BoardTuning` instead, with a comment and units.
-5. **Failure is physical.** If a finger leaves the board, or doesn't follow through, the trick
-   fails because the forces stop — never because a rule says "fail".
-6. **Target**: Android phones, landscape, 60 fps minimum, multitouch.
-7. **Code style**: small, single-purpose scripts; comment everything; explain any physics math
-   (units, sign conventions, why) in comments next to the code.
+1. **8-bit look.** The game renders at 180×320 real pixels (portrait), integer-scaled. Every
+   colour comes from `Pal` (palette.gd); text uses `PixelFont` (5×7 bitmap font, 8 px lines);
+   art is pixel maps or palette-painted pixels (`Sprites`, `TileSetBuilder`, `CharacterLook`).
+   No smooth gradients, no anti-aliased shapes, no imported art yet.
+2. **Procedural, seeded, deterministic world.** One integer seed → the same terrain, caves,
+   ores, trees, forage and lore placement (`WorldGen`, our own `HashNoise`; no engine RNG or
+   clock in generation). A chunk generated alone equals the same chunk generated in sequence.
+3. **The story develops in order.** Chapters (story/story.json) advance through goals in a fixed
+   order; journal pages and runestones always reveal the NEXT unread entry of their kind.
+4. **Survival is systemic.** Health, hunger, warmth and stamina follow rules in `Survival`
+   driven by tuning; running out hurts; collapsing sends you home and costs carried materials
+   (the chest keeps things safe). No scripted deaths.
+5. **The cabin is yours.** Everything in it is placed by the player from crafted items
+   (`Cabin` data + `CabinInterior` view); upgrades (floor, walls, roof, extensions) are recipes.
+   Placement rules live in `Cabin.can_place` (pure, tested).
+6. **All tuning values live in one resource**: `res://tuning/game_tuning.tres` (script
+   `scripts/game_tuning.gd`) — including recipes, costs, food values, comfort and light values,
+   background kits. Names/kinds/footprints of items are in `catalog.gd`; story text in
+   story/story.json. No magic numbers elsewhere.
+7. **Target**: Android phones, portrait, 60 fps, touch: ◀ ▶ JUMP buttons; tap the world to
+   chop / dig / pick up / read; tap furniture to use it; BUILD to arrange the cabin.
+8. **Saves** store the seed and what the player changed (character, mined cells, felled /
+   picked objects, bag, chest, stats, cabin, story, time, position) — never the world itself.
+9. **Code style**: small, single-purpose scripts; comment everything; units in comments.
 
 ## Conventions
 
-- **World scale**: 1 world unit = 10 cm real (`BoardTuning.world_scale = 10` units per metre).
-  Board geometry is entered in real millimetres and converted. Gravity = 9.81 m/s² × world_scale.
-- **Board local axes**: +X = right, +Y = up (out of the grip tape), **−Z = nose**, **+Z = tail**.
-  Origin = middle of the flat part of the deck, at mid-thickness.
-- Mass in kilograms, forces in kg·unit/s², speeds in units/s.
-- `state.apply_force(f, offset)`: `offset` is from the body origin, in *global* orientation.
-
-## Physics model decisions (from M1 — keep unless the user asks otherwise)
-
-- A foot **drives its deck point toward a target speed** (velocity matching with an effective mass,
-  `FootPhysics`), it does not apply a raw force ∝ finger speed. Raw forces made the 14 g board spin
-  uncontrollably in the air.
-- Press speed = finger screen speed toward the **nearest board end**; press only works in the outer
-  "press zone" (where kicks rise). Back foot: flick down onto the tail. Front foot: drag up to nose.
-- On the ground with the foot past an axle, the board tips about that axle (parallel-axis inertia +
-  weight hold force). In the air: rotation about the centre of mass only.
-- Resting finger weight applies **only while grounded** (a still finger in the air must not push).
-- The pop is the tail strike plus `tail_restitution` bounce, applied at the **average** kick contact.
-- Board collision is frictionless; wheel grip/rolling are explicit forces (`WheelPhysics`).
-- Headless tests run each scenario in a fresh `SubViewport` world (a shared Jolt world isn't a true
-  repeat). Visual checks: Mobile renderer via lavapipe (`--rendering-driver vulkan
-  --rendering-method mobile` under xvfb); the Compatibility renderer over-exposes under llvmpipe.
-
-## M2 decisions (park, looks, heavy feel)
-
-- The park is a 1:8 model of a real street plaza (fingerboard : skateboard ratio). It's generated by
-  `tools/build_park.gd` into `scenes/skatepark.tscn`; the user may edit the scene directly, so
-  don't re-run the tool without asking. The park owns the sky/sun and a `Spawn` marker.
-- The board can't steer yet: keep the in-line obstacles (stairs, manual pad, kicker) on x = 0.
-- Foot tipping about an axle measures ω × (lever from the axle) only. Using the board's full
-  velocity made fast rolling read as "tail already going down" and killed the pop at speed.
-- Wheel skid uses linear + **yaw** spin only (the deck rocks on the bushings without the wheels
-  skidding); otherwise single-wheel landings kicked the board sideways.
-- `bushing_damping` (3+ wheels down) damps pitch/roll spin and rebound so landings stick.
-- The chase camera feeds forward the board's horizontal velocity, so at speed the board stays in
-  the same spot on screen (fingers stay on it).
-- Heavy-feel defaults were chosen with the test's feel metrics (sustained spin, settle ticks,
-  bounces, coast, yaw drift), comparing against the M1 values.
-
-## Milestones
-
-- **M1 (done)**: project setup, ground, board, chase camera, finger→foot input, ollie via physics,
-  pushing, debug overlay, haptics.
-- **M2 (done)**: outdoor street skatepark, realistic board model, heavier board feel.
-- Do **not** build kickflips, steering or other tricks until the user asks for the next milestone.
+- Tiles are 8 px. x grows east (story direction), y grows down. The cabin is at tile x = 0 in a
+  flat clearing; the old cliff closes the west (x < world_min_x).
+- The cabin interior is a separate walkable room far above the world (`CabinInterior.ORIGIN`);
+  going in/out moves the player and switches visibility, camera limits and the background.
+- Tool tiers: hands 0, stone 1, iron 2. Tiles have hardness tiers (`Tiles.tier`); a pick must
+  be at least that tier. Axes only change chop damage.
+- Stations: hand (anywhere), workbench / hearth (inside, with that furniture placed).
+- Game rules tick in `_physics_process` (60 Hz). Visual-only animation may use `_process`.
 
 ## Testing
 
-- Headless physics tests: `godot --headless --path . -s res://tests/test_ollie.gd`
-  (simulates touch input: ollie, pushes, determinism, ollie down the stairs; prints feel
-  metrics). Run after physics changes. `TRACE=<scenario>` prints a per-tick trace.
+- Headless tests: `godot --headless --path . -s res://tests/test_game.gd`
+  (world determinism + chunk independence, clearing, biomes/resources/forest, survival, cabin
+  placement rules, crafting stations/tiers/upgrades, story order, character sprites and font,
+  and the real scene: cabin start, door, walking, chopping, digging, building, sleeping,
+  save/load).
+- New `class_name` scripts need one `godot --headless --editor --quit` before headless tests.
+- Visual checks: `xvfb-run` + `--rendering-driver vulkan --rendering-method mobile` (lavapipe).
+- Tuning notes: value-noise ore thresholds are sensitive (0.83→0.87 halves coal); check the
+  test's resource counts after changing them. Meadow tree density 0.4 keeps 8+ trees near home.
+
+## Milestones
+
+- **M1 (Eldwood)**: 8-bit pipeline (low-res viewport, palette, pixel font, sprites); title
+  screen; character creator (10 appearance options, name, 4 backgrounds with kits); forest world
+  (meadow, pinewood, elderwood, stonecrag; trees to chop; forage; clay/coal/iron/gold; old
+  stonework); survival (health/hunger/warmth/stamina, torches, sleep); crafting by station with
+  tool tiers; the cabin (walkable interior, 21 furniture/decor pieces, build mode, 6 upgrades,
+  bed/hearth/workbench/chest, comfort and light); medieval story (10 chapters, journal pages,
+  runestones); pixel HUD; autosave; tests.

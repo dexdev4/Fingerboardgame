@@ -1,0 +1,98 @@
+{
+  "chapters": [
+    {
+      "id": "cabin",
+      "title": "A Cabin at the Wood's Edge",
+      "text": "The village gave you the old woodsman's cabin at the edge of the Eldwood. Nobody else wanted it: the woodsman, old Aldous, walked into the forest last winter and never came back.\n\nThe cabin is bare. Chop trees for logs (tap a tree, or hold your finger on it), then open CRAFT to make a workbench. Go inside and use BUILD to place it.",
+      "objective": "Build a workbench in your cabin",
+      "goal": {"type": "place", "id": "workbench"}
+    },
+    {
+      "id": "warmth",
+      "title": "Warmth",
+      "text": "Nights at the edge of the Eldwood are cold enough to kill. A hearth would keep the cabin warm and let you cook.\n\nLoose rocks lie about the meadow, and there's clay under the turf: dig down a little to find it.",
+      "objective": "Build a hearth in your cabin",
+      "goal": {"type": "place", "id": "hearth"}
+    },
+    {
+      "id": "night",
+      "title": "The First Night",
+      "text": "The fire crackles. Out in the dark, something moves between the trees: lights, low and green, that vanish when you look straight at them.\n\nStay near the fire, or sleep through the night in your bed. Torches will keep you warm and lit if you must go out.",
+      "objective": "Get through the night",
+      "goal": {"type": "night", "count": 1}
+    },
+    {
+      "id": "page",
+      "title": "A Torn Page",
+      "text": "In the morning there are small bare footprints in the frost around the cabin, leading east into the trees.\n\nAldous kept a journal. Perhaps it can tell you what lives out there.",
+      "objective": "Find a page of Aldous's journal to the east",
+      "goal": {"type": "lore", "kind": "page", "count": 1}
+    },
+    {
+      "id": "pines",
+      "title": "Into the Pines",
+      "text": "The page is in the old man's cramped hand. The rest must be scattered along the path he took, deeper into the Eldwood.",
+      "objective": "Reach the Pinewood",
+      "goal": {"type": "biome", "biome": 1}
+    },
+    {
+      "id": "home",
+      "title": "Hearth and Home",
+      "text": "The deeper woods will test you. A comfortable home means better sleep, and better sleep means you heal more overnight.\n\nMake the cabin your own: furniture, rugs, decorations, a new floor and new walls.",
+      "objective": "Raise your cabin's comfort to 12",
+      "goal": {"type": "comfort", "value": 12}
+    },
+    {
+      "id": "oaks",
+      "title": "The Old Oaks",
+      "text": "Past the pines, the trees grow huge and the light turns green and dim. This is the Elderwood, where Aldous followed the lights.",
+      "objective": "Read 4 pages of the journal",
+      "goal": {"type": "lore", "kind": "page", "count": 4}
+    },
+    {
+      "id": "stones",
+      "title": "Standing Stones",
+      "text": "The journal speaks of carved stones in the rocky country beyond the oaks, written in a tongue older than the kingdom.",
+      "objective": "Find a runestone in the Stonecrag",
+      "goal": {"type": "lore", "kind": "runestone", "count": 1}
+    },
+    {
+      "id": "iron",
+      "title": "Cold Iron",
+      "text": "The stones and the journal agree: a cold iron nail is driven into the First Root, deep under the forest, and only someone from the world of men can draw it out.\n\nYou'll need iron of your own to dig that deep. Find iron ore and coal under the crags, smelt them at your hearth, and make an iron pickaxe.",
+      "objective": "Make an iron pickaxe",
+      "goal": {"type": "craft", "id": "iron_pick"}
+    },
+    {
+      "id": "root",
+      "title": "The First Root",
+      "text": "That night the green lights come right up to your window. In the firelight you see them at last: small folk, bark-skinned, with eyes like dew.\n\n\"You are the one who lives in Aldous's house,\" says the eldest. \"He tried. The iron burned him. Will you try?\"\n\nFar to the east and far below, under the oldest roots of the Eldwood, the cold nail is waiting.\n\n(That's the end of the first part of the story. The forest goes on: explore, build and survive as long as you like.)",
+      "objective": "Explore the Eldwood",
+      "goal": {"type": "end"}
+    }
+  ],
+  "lore": {
+    "page": [
+      {"title": "Aldous's journal, page 1", "text": "First day in the cabin. The villagers call me mad for living so near the Eldwood. The quiet suits me fine."},
+      {"title": "Aldous's journal, page 2", "text": "Lights between the pines again tonight. Green, low to the ground. They moved as if they were looking for something."},
+      {"title": "Aldous's journal, page 3", "text": "Found a standing stone east of the pines, carved in a tongue older than the kingdom. I know one rune on it: 'winter'."},
+      {"title": "Aldous's journal, page 4", "text": "The winters come sooner every year. The old oaks drop their leaves in high summer. Something is wrong with the wood."},
+      {"title": "Aldous's journal, page 5", "text": "The lights led me to a hollow under the great oaks. Small bare footprints everywhere. I was not alone."},
+      {"title": "Aldous's journal, page 6", "text": "They call themselves the Kept. They tend the Heartwood, the first tree, whose roots run under the whole forest."},
+      {"title": "Aldous's journal, page 7", "text": "The Heartwood is sickening. Long ago someone drove a nail of cold iron into its root, and the Kept cannot touch iron."},
+      {"title": "Aldous's journal, page 8", "text": "I go east to draw the nail. If I do not come back, whoever lives in my cabin: the Kept will come to you. Be kind to them."}
+    ],
+    "runestone": [
+      {"title": "Runestone", "text": "Before the kingdom, the wood was one tree, and the tree was the wood."},
+      {"title": "Runestone", "text": "We, the Kept, sang the winters short and the summers long."},
+      {"title": "Runestone", "text": "Men came with iron and fire. One drove a cold nail into the First Root."},
+      {"title": "Runestone", "text": "Since then the winter grows. Each year it takes a little more."},
+      {"title": "Runestone", "text": "Iron cannot be drawn by Kept hands, only by one who walks in the world of men."},
+      {"title": "Runestone", "text": "Find the First Root. Draw the nail. The wood will remember you."}
+    ]
+  },
+  "lore_fallback": {
+    "page": {"title": "A loose page", "text": "A blank page, stained with sap and rain."},
+    "runestone": {"title": "Runestone", "text": "The runes repeat words you have already read: root, iron, winter."}
+  }
+}
