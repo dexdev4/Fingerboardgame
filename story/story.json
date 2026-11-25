@@ -1,0 +1,98 @@
+{
+  "chapters": [
+    {
+      "id": "impact",
+      "title": "Impact",
+      "text": "Hull breach. Main power offline. Your section of the survey ship Meridian is a smoking wreck at the bottom of a crater on the planet Tessaris.\n\nThe emergency scrubber still trickles air, but your suit tank won't last long out there.\n\nTap rock to mine it, and hold your finger on it to keep digging. Ice and metal ore lie just under the surface. Tap the ship to repair it.",
+      "objective": "Repair the O2 scrubber at the ship",
+      "goal": {"type": "repair", "id": "scrubber"}
+    },
+    {
+      "id": "scattered",
+      "title": "Scattered",
+      "text": "Air hisses back into the cabin. Your comm crackles with fragments of crew beacons, all of them to the east. The crater wall blocks the way west.\n\nWatch your oxygen out there. Green air-bladder plants refill it, and the ship refills it fully.",
+      "objective": "Find a crew pod to the east",
+      "goal": {"type": "lore", "kind": "crew_log", "count": 1}
+    },
+    {
+      "id": "nightfall",
+      "title": "Nightfall",
+      "text": "The pod was empty, but someone made it down alive.\n\nThe light is going. Tessaris's nights are long and bitterly cold, and your suit heater burns power to keep you alive. Shelter at the ship, or carry power cells.",
+      "objective": "Survive the night",
+      "goal": {"type": "night", "count": 1}
+    },
+    {
+      "id": "sunlight",
+      "title": "Sunlight",
+      "text": "Dawn, pale and violet. The ship's solar array is shattered, but energy crystal from the hills could bridge the broken cells.",
+      "objective": "Repair the solar array",
+      "goal": {"type": "repair", "id": "solar"}
+    },
+    {
+      "id": "glow",
+      "title": "The Glow",
+      "text": "With power restored, the ship's scanner lights up: a field of strong energy readings to the east. The crew's beacons lead the same way.",
+      "objective": "Reach the Crystal Fields",
+      "goal": {"type": "biome", "biome": 1}
+    },
+    {
+      "id": "breath",
+      "title": "Deeper Breath",
+      "text": "The trail runs farther than one tank of air can carry you. Reinforce the suit tank at the ship before you go on.",
+      "objective": "Upgrade the suit tank",
+      "goal": {"type": "repair", "id": "tank"}
+    },
+    {
+      "id": "lowlands",
+      "title": "The Lowlands",
+      "text": "The crew logs talk about lights in the lowlands beyond the crystals. Follow their trail.",
+      "objective": "Read 5 crew logs",
+      "goal": {"type": "lore", "kind": "crew_log", "count": 5}
+    },
+    {
+      "id": "stones",
+      "title": "Old Stones",
+      "text": "Past the lowlands lies a plain of grey ash and broken pillars. The captain went there, and she knew what she would find.",
+      "objective": "Find a monolith in the Ruins Expanse",
+      "goal": {"type": "lore", "kind": "monolith", "count": 1}
+    },
+    {
+      "id": "signal",
+      "title": "Signal",
+      "text": "Veins of alien alloy run through the bedrock under the ruins. Reyes's last message was clear: fix the antenna, send the code CALDER-7, and listen.",
+      "objective": "Repair the long-range antenna",
+      "goal": {"type": "repair", "id": "antenna"}
+    },
+    {
+      "id": "answer",
+      "title": "Answer",
+      "text": "You send the code into the dark. For a long minute there is only static.\n\nThen a voice. It is the captain's, but slower and layered, as if many voices are speaking through hers:\n\n\"Specialist. We kept the light. Come down to us.\"\n\nSomewhere far beneath the ruins, something wakes.\n\n(That's the end of the first part of the story. The world keeps going: explore as far east as you dare.)",
+      "objective": "Keep exploring Tessaris",
+      "goal": {"type": "end"}
+    }
+  ],
+  "lore": {
+    "crew_log": [
+      {"title": "Crew log: Pilot Jun Hale", "text": "Pod two, Jun Hale. We lost the Meridian's drive coming out of the jump. I saw your section tear away over the crater. If you're reading this, you made it down. I'm heading east, towards the captain's beacon."},
+      {"title": "Crew log: Dr. Amara Okafor", "text": "Pod three, Okafor. The air is too thin to breathe, but the green bladder plants store oxygen in pockets. Pop them and breathe. Four species so far. Nothing here should have evolved like this."},
+      {"title": "Crew log: Captain Ines Calder", "text": "Captain's log. I've regrouped with Hale and Okafor. The ground hums at night. Reyes swears the crystals in the hills are holding a charge, like batteries someone left behind."},
+      {"title": "Crew log: Engineer Tomas Reyes", "text": "Reyes. The crystals ARE batteries: cut faces, a regular lattice. Someone made these. The captain wants to push on to the lowlands, where Okafor saw lights."},
+      {"title": "Crew log: Dr. Amara Okafor", "text": "The lowland fungus glows in a pattern. It pulses in the same rhythm as the hum under the ground. I think it's listening to something down there."},
+      {"title": "Crew log: Pilot Jun Hale", "text": "We found stones. Tall and black, covered in marks. The captain went quiet when she saw them. She said she'd seen them before, in the probe images from before we launched."},
+      {"title": "Crew log: Captain Ines Calder", "text": "I owe the crew the truth. The Meridian was never a survey ship. We came because a signal reached Earth from this planet. A signal in our own language."},
+      {"title": "Crew log: Engineer Tomas Reyes", "text": "The ruins go down. Far down. The captain has gone in alone with the antenna core. Whoever finds this: fix your ship's antenna. Send the code CALDER-7. Then listen."}
+    ],
+    "monolith": [
+      {"title": "Monolith inscription", "text": "We were the Tessari. We sang to the stones, and the stones held our light."},
+      {"title": "Monolith inscription", "text": "The Long Night came from the sky. Our star dimmed for a thousand years, and we carried the light below."},
+      {"title": "Monolith inscription", "text": "We left the bladders for breath and the caps for bread, for whoever came after us."},
+      {"title": "Monolith inscription", "text": "We learned to listen across the dark between the stars. We heard a small voice, far away. It was asking for help."},
+      {"title": "Monolith inscription", "text": "We answered it in its own words, so that it would not be afraid."},
+      {"title": "Monolith inscription", "text": "Come down to us when you are ready. We kept the light."}
+    ]
+  },
+  "lore_fallback": {
+    "crew_log": {"title": "Crew pod", "text": "The pod's memory is corrupted. Only static, and the faint hum from under the ground."},
+    "monolith": {"title": "Monolith", "text": "These glyphs repeat words you have already read: light, below, waiting."}
+  }
+}

@@ -1,32 +1,8 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
-[ext_resource type="Script" path="res://scripts/board.gd" id="2_board"]
-[ext_resource type="Script" path="res://scripts/chase_camera.gd" id="3_cam"]
-[ext_resource type="Script" path="res://scripts/finger_input.gd" id="4_input"]
-[ext_resource type="Script" path="res://scripts/haptics.gd" id="5_haptics"]
-[ext_resource type="Script" path="res://scripts/debug_overlay.gd" id="6_overlay"]
-[ext_resource type="Resource" path="res://tuning/board_tuning.tres" id="8_tuning"]
-[ext_resource type="PackedScene" path="res://scenes/skatepark.tscn" id="9_park"]
+[ext_resource type="Resource" path="res://tuning/game_tuning.tres" id="2_tuning"]
 
-[node name="Main" type="Node3D"]
+[node name="Main" type="Node2D"]
 script = ExtResource("1_main")
-tuning = ExtResource("8_tuning")
-
-[node name="Skatepark" parent="." instance=ExtResource("9_park")]
-
-[node name="Board" type="RigidBody3D" parent="."]
-script = ExtResource("2_board")
-
-[node name="ChaseCamera" type="Camera3D" parent="."]
-current = true
-script = ExtResource("3_cam")
-
-[node name="FingerInput" type="Node" parent="."]
-script = ExtResource("4_input")
-
-[node name="Haptics" type="Node" parent="."]
-script = ExtResource("5_haptics")
-
-[node name="DebugOverlay" type="CanvasLayer" parent="."]
-script = ExtResource("6_overlay")
+tuning = ExtResource("2_tuning")

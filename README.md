@@ -1,213 +1,132 @@
-# Fingerboard
+# Tessaris
 
-A realistic fingerboard game for Android (Godot 4.5, GDScript, Jolt physics).
-Your two fingers are the skater's feet. There are no canned tricks: every trick comes from
-finger forces acting on a physics board.
+A procedurally generated survival side-scroller with a developing story, for Android phones held
+upright (portrait). Made with Godot 4.5 and GDScript.
 
-**Milestone 1:** board, ground, chase camera, two-finger feet, ollie, pushing, debug overlay, haptics.
-**Milestone 2:** outdoor street skatepark, realistic board model, heavier and more realistic board feel.
-**Milestone 3:** slow, smooth, floaty controls: deliberate finger movements, lazy rotations, long hang time.
-**Milestone 4:** even smoother reactions; a board that lands upside down or on its side grips the
-ground and stops; more realistic board (rounded ply edges, worn grip, riser pads, kingpin and
-bushings, washers and axle nuts, lipped wheels with bearings).
-**Milestone 5:** lower gravity; cleaner pops; flicking a finger off the side of the board presses
-that edge, so flip tricks can come out of the physics; the most realistic board yet (curved
-kicks, bumpy grip, wood grain, Phillips bolts, rounded baseplates, a printed wordmark), 4×
-anti-aliasing and film-like colour.
-**Milestone 10:** flatter, more controllable ollies (the front finger levels the board in the
-air; a crooked slide no longer rolls it); the second finger is easier to place (it always
-becomes the other foot, and touches just off the board count); a bigger plaza with a 5-stair
-(handrail + hubba), a quarter pipe, a kinked rail, manual pads, a bank, planters and lamps.
-**Milestone 11:** the scoop: sweeping the back foot sideways along the tail as you pop spins the
-board round (shove-it), and it no longer cancels a front-foot flick. The 360 flip's flip half is
-still being worked on (it comes down on its side).
-**Milestone 12:** pause menu (II PAUSE, the phone's back button, or Esc) with settings: game
-speed (slow motion), board flip speed, flick sensitivity, gravity, and camera distance, height,
-orbit, tilt and zoom. Settings are saved on the phone.
-**Milestone 13:** flatter, higher pops: snapping the tail pops the board up more evenly
-(about half a board length) instead of standing it up vertical; 360 flips now come round and land.
-**Milestone 8:** game feel closer to True Skate / Touchgrind (snappier, rewards sharp flicks,
-carries speed); **steering** (lean the trucks); **catching** the board in the air and adjusting
-it; a much more detailed plaza (hubba, funbox, long ledge, red curb, bank, picnic table, city
-blocks); board wear details.
-**Milestone 7:** portrait mode — hold the phone upright; the board runs up the screen with the
-run ahead visible above it and room either side to push.
-**Milestone 6:** grinds and slides — solid trucks that lock onto rails and ledge edges, real
-friction between metal trucks / wooden deck and steel, painted or concrete surfaces, and a flat
-bar and a ledge right on the run-up line.
+Your section of the survey ship *Meridian* has crashed on the alien planet Tessaris. Keep your
+suit alive, repair the wreck as your base, and travel east through a world generated from a
+seed, following your scattered crew and uncovering what happened to the planet.
 
-## The park
+> This repository used to hold a fingerboard game. It was replaced by Tessaris; the old code is
+> still in the git history.
 
-A 1:8 model of a real outdoor street plaza (the same ratio as a fingerboard to a skateboard), in
-concrete with grass, trees and lamp posts around it. You start at the top of a run-up platform.
+## How to play
 
-| In line (straight ahead from the start) | Beside the line |
+| Control | What it does |
 |---|---|
-| 3-stair with a handrail | Yellow painted ledge with steel coping |
-| Manual pad | Flat bar |
-| Kicker | Low wall, benches, planters |
-| | Bank from the plaza back up to the platform |
+| **◀ ▶** (bottom left) | Walk. Slide your thumb between them to turn without lifting it. |
+| **JUMP** (bottom right) | Jump (works for a moment after running off a ledge). |
+| **Tap a tile** near you | Mine it. Hold your finger on it to keep digging. Ore, ice, crystal and alloy go into your pack. |
+| **Tap a plant / wreckage** | Pick it up: air bladders refill oxygen, glowcaps are food, wreckage gives metal (and sometimes a power cell). |
+| **Tap a crew pod / monolith** | Read it. The story unfolds. |
+| **Tap the ship** (when next to it) | Repair systems and make supplies. |
+| **Item buttons** (above the controls) | Eat a glowcap, use an O2 canister or a power cell. |
+| **II** (top right) or the back button | Pause: resume, see the world seed, or start a new world. |
 
-The board can't turn yet, so the obstacles beside the line are there for when steering is added.
-To jump the stairs: push 2–3 times on the platform, then ollie about one board length before
-the edge.
+Desktop testing: A/D or arrow keys to walk, Space/W/↑ to jump, click to tap.
 
-The park is a normal Godot scene (`scenes/skatepark.tscn`): move, copy or delete obstacles in the
-editor. It was generated by `tools/build_park.gd`. Re-running that tool rebuilds the park from
-scratch and **overwrites edits made in the editor**:
-`godot --headless --path . -s res://tools/build_park.gd`
+## Survival
 
-## Controls
+- **Oxygen** drains outside the ship. Refill it at the ship, from air-bladder plants, or with O2 canisters.
+- **Food** drains slowly. Eat glowcaps.
+- **Power** runs your drill (each hit), your headlamp (at night and underground) and your heater
+  (at night, outside the ship). Refill it at the ship or with power cells.
+- **Health**: running out of oxygen, food, or power at night hurts. It heals when you're well
+  supplied, and faster at the ship. Hard landings hurt too.
+- If health reaches zero, the suit drags you back to the ship and you lose half of what you were carrying.
+- **Day and night**: a day is 5 minutes and the last third of it is a cold, dark night.
 
-| Finger | What it does |
-|---|---|
-| Touch the **back half** of the board | That finger is your **back foot** (orange dot). |
-| Touch the **front half** | That finger is your **front foot** (cyan dot). |
-| Back foot: **quick flick down the screen** on the tail | Snaps the tail down; it hits the ground and the board pops up evenly. A faster flick gives a harder pop. |
-| Front foot: **drag up toward the nose** after the pop | Levels the board in the air. No slide means the board stays tilted up and lands tail-first. |
-| **Swipe backward on the ground** beside the board | Pushes. You can't push faster than you swipe. |
-| **RESET** (top right) | Puts the board back at the start. |
-| **II PAUSE** (under RESET), back button | Pauses the game and opens the settings menu. |
+## The ship
 
-The controls are tuned for **slow, deliberate fingers**: a calm press down the tail (about a
-tenth of a second) pops as well as a sharp flick, and flicking faster gives almost nothing extra
-(`foot_max_speed`). Gravity is lowered (`gravity_multiplier`), so the board hangs in the air.
+| Repair | Cost | Effect |
+|---|---|---|
+| O2 Scrubber | 4 metal, 3 ice | Fast oxygen refill at the ship |
+| Solar Array | 6 metal, 3 crystal | Fast power refill at the ship |
+| Suit Tank | 5 metal, 4 ice, 2 crystal | +80 oxygen capacity |
+| Long-range Antenna | 10 metal, 6 crystal, 4 alloy | ...send the signal |
 
-Tip: start the front-foot slide just after the tail snap.
+You can also make O2 canisters (2 ice) and power cells (2 crystal).
 
-**Turning:** slide your fingers toward one side of the board — weight off the centre line leans
-the trucks and the board carves that way (`steer_sensitivity` in `board_tuning.tres`).
+## The world
 
-**Catching:** after popping, lift a finger and put it back on the board while it's in the air.
-That finger catches the board: holding it still stops the spin and presses the board level;
-dragging it rotates the board so you can line it up before landing.
+Every world comes from a seed: the same seed always makes the same world.
 
-**Grinds and slides:** ollie onto the in-line flat bar (after the manual pad) or the in-line
-ledge (after the low wall). Land with the **trucks** on it for a 50-50 / 5-0 / nosegrind, or
-with the board **across** it for a boardslide. Steel rails and coping are slick (grinds carry
-speed); wood on concrete grabs. On the ledge, the board tips in with its inside wheels on top,
-like a real ledge 50-50. The debug overlay shows "trucks grinding" and "deck sliding".
-Tune with `grind_mu` and `slide_mu` in `board_tuning.tres`.
+- **Biomes**, going east: Crash Plains, Crystal Fields (tall hills, energy crystal), Fungal
+  Lowlands (glowcaps, air plants), Ruins Expanse (pillars, alien alloy, monoliths). After the ruins,
+  the biomes keep repeating, with different terrain each time.
+- **Underground**: caves, metal ore, ice, crystal and alloy veins, and deep rock that gets harder and darker.
+- A crater wall closes off the west, so the story always leads east.
+- The world is generated in chunks on a background thread as you travel.
 
-**Flip attempts:** after the pop, flick your front finger up toward the nose **and off the side**
-of the board, with a quick, deliberate flick (a slight wobble does nothing). A normal or a hard
-flick both give about one kickflip — the board's roll tops out at `press_side_max_roll`, so it
-doesn't spin out however hard you flick. A soft flick gives a partial flip. Pushing toward a side edge presses that edge (the deck's concave rises at the rails,
-just as the kicks rise at the ends), which rolls the board in the air. On the ground the wheels
-hold it flat, like a real board. If you slide too early, you press the
-board back down before it pops, just like a real ollie.
+## The story
 
-**Shove-its / 360 flips:** as you snap the tail, keep the back finger moving **sideways** along
-the tail (a scoop). That end of the board is pushed round, and the board spins flat. For a 360 flip,
-scoop and flick the front finger toward the **same** side (both feet toward your heels, like a
-real backside scoop + kickflip). Both come round: the board flips once and shoves round, and lands on its wheels.
+Ten chapters, each with a goal (repair the scrubber, find a crew pod, survive the night, and so
+on), lead to a signal and an answer. Two lore threads run alongside: **crew logs** (what happened
+to your crew) and **monolith inscriptions** (the planet's past). Pods and monoliths always reveal
+the *next* entry, so the story reads in order wherever you find them. All the text is in
+`story/story.json`.
 
-**Pause menu settings** (saved on the phone; DEFAULTS puts them back to `board_tuning.tres`):
+Your game autosaves every 30 seconds, when you pause, and when you leave the app.
 
-| Setting | What it does |
-|---|---|
-| Game speed | Slow motion (0.1×–1.5×). The physics is identical, only slower: the same fingers per tick give the same trick. Your fingers aren't slowed, so a flick reads faster in slow motion; move your fingers slower to match. |
-| Gravity | × real gravity. Lower = more hang time. |
-| Board flip speed | Scales how fast a flick can roll the board and how fast a scoop can spin it. |
-| Flick sensitivity | How much a finger speed counts as a press (pops and flicks). Higher = easier. |
-| Camera | Distance behind, height, orbit round the board (left/right), tilt (aim up/down) and field of view. |
+## Run it
 
-## How the physics works (short version)
+1. Install **Godot 4.5.x** (standard build) from godotengine.org.
+2. Open this folder in Godot (Import → `project.godot`) and press Play.
 
-Each physics tick (120 Hz), for every finger on the board:
+### On your Android phone
 
-- **Contact point and finger velocity in board space**: raycast from the screen onto the deck.
-- **Press**: finger motion on screen toward the nearest end of the board drives that point of the
-  deck downward at a matching speed. Kicks rise toward the tips, so a foot driven toward a tip
-  pushes the kick down. The force applied is only what that speed needs, so the foot never
-  over-drives the board.
-- **Grip drag**: a sliding finger drags the grip tape, up to `grip_mu ×` its press force.
+One-time setup, the same as before: in Godot, **Editor → Manage Export Templates → Download and
+Install**; install **OpenJDK 17** and the **Android SDK** (Android Studio's SDK Manager: Platform-Tools,
+Build-Tools 35.x, Platform 35, Command-line Tools); set both paths in **Editor → Editor Settings →
+Export → Android** (the JDK path is the JDK 17 *folder*); enable USB debugging on the phone.
 
-The forces act at the finger's contact point. Pressing behind the rear axle tips the board nose-up
-until the tail strikes the ground; the strike's bounce (`tail_restitution`) is the pop.
-`scripts/foot_physics.gd` has the full maths in its comments.
-
-## Deploy to your Android phone
-
-One-time setup:
-
-1. Install **Godot 4.5.x** (standard build, not .NET) from godotengine.org.
-2. Open this folder in Godot (Import → select `project.godot`).
-3. **Editor → Manage Export Templates → Download and Install** (same version as the editor).
-4. Install **OpenJDK 17** and the **Android SDK**. The simplest way is to install Android Studio,
-   then in its SDK Manager install *Platform-Tools*, *Build-Tools 35.x*, *Platform 35* and
-   *Command-line Tools*.
-5. In Godot: **Editor → Editor Settings → Export → Android**: set *Java SDK Path* (JDK 17 folder)
-   and *Android SDK Path*. Godot creates a debug keystore automatically.
-6. On the phone, enable **Developer options** (tap *Build number* 7 times), then turn on
-   **USB debugging**. Plug the phone in and accept the "Allow USB debugging" prompt.
-
-Every time:
-
-- **One-click:** when the phone is connected, an Android icon appears in the editor's top-right
-  run bar. Click it ("Remote Deploy") and the game installs and launches on the phone.
-- **Or build an APK:** *Project → Export… → Android → Export Project* (`build/fingerboard.apk`),
-  then `adb install -r build/fingerboard.apk`.
-
-The preset in `export_presets.cfg` is already set up: arm64, portrait (hold the phone upright),
-immersive full screen, VIBRATE permission for haptics. Tests are excluded from the build.
-
-Desktop testing: running in the editor works, and the mouse acts as one finger (push, or a single
-foot). Ollies need two real fingers, so test those on the phone.
+Then either click the Android icon in the editor's top-right run bar (one-click deploy), or
+**Project → Export… → Android → Export Project** (`build/tessaris.apk`) and
+`adb install -r build/tessaris.apk`. The preset is set up for arm64, portrait, full screen.
 
 ## Tuning
 
-Every number lives in **`tuning/board_tuning.tres`**: select it in the FileSystem dock and edit it
-in the Inspector. The *Board look* group sets your board's colours (grip, graphic, trucks,
-bushings, wheels). Geometry is in real millimetres and grams; everything else is in world units
-(1 unit = 10 cm real). Geometry, mass and damping apply when the scene starts. Force settings also
-apply live if you edit the resource while the game runs (Remote scene tree).
+Every number (world shape, biome sizes, ore rarity, player speed, drain rates, repair costs, day
+length, camera) is in **`tuning/game_tuning.tres`**: select it in the FileSystem dock and edit it in
+the Inspector. Set `default_seed` to play one fixed world.
 
 ## Tests
 
-Headless physics checks that simulate real touch input: an ollie with and without the front slide,
-three pushes, a determinism repeat, a pop shove-it, the same ollie at half game speed, an ollie down the stairs at speed, and an upside-down landing. Each scenario also
-prints "feel" numbers (sustained spin, bounces and settle time after landing, how much speed is
-kept, yaw drift), which is how "heavier" was measured:
+```
+godot --headless --path . -s res://tests/test_game.gd
+```
 
-```
-godot --headless --path . -s res://tests/test_ollie.gd
-TRACE=0 godot --headless --path . -s res://tests/test_ollie.gd   # per-tick trace of scenario 0
-ONLY=0,1 godot --headless --path . -s res://tests/test_ollie.gd  # run just scenarios 0 and 1
-```
+The headless tests check:
+- World determinism and chunk independence.
+- The crash site and the crater wall.
+- Biomes, caves and resources, and that the first repair is possible near the ship.
+- Survival rates and that the story advances in order.
+- In the real game scene: walking, jumping, mining that stays mined after a chunk reloads,
+  pickups that don't come back, repairs, and a save/load roundtrip.
 
 ## Layout
 
 ```
-scenes/main.tscn          park, board, camera, input, overlay
-scenes/skatepark.tscn     the park (sky, sun, ground, obstacles, scenery, Spawn marker)
-tools/build_park.gd       generates skatepark.tscn (overwrites it — careful)
-tools/add_grind_spots.gd  adds the in-line grind spots + slickness tags (keeps your edits)
-tools/add_plaza_details.gd adds the hubba, funbox, ledges, curb, furniture, city (keeps edits)
-tools/expand_park.gd      plaza extension, 5-stair, quarter pipe, kinked rail, polish (keeps edits)
-tuning/board_tuning.tres  all tuning values (script: scripts/board_tuning.gd)
+scenes/main.tscn        the game (everything else is created in code)
+tuning/game_tuning.tres all tuning values (script: scripts/game_tuning.gd)
+story/story.json        chapters, crew logs, monolith inscriptions
 scripts/
-  main.gd                 wires everything from the tuning resource
-  board.gd                RigidBody3D: reads contacts, applies forces, pop/landing events
-  board_geometry.gd       board dimensions (mm → world units)
-  board_builder.gd        collision shapes built from the geometry
-  board_visuals.gd        realistic deck (concave, rounded ply edges, worn grip, graphic)
-  truck_visuals.gd        trucks, hardware and wheels
-  deck_friction.gd        grip/edge friction when the board lands upside down or on its side
-  slide_friction.gd       grind/slide friction for trucks and the deck underside
-  catch_physics.gd        catching / adjusting the board with a finger in the air
-  mesh_util.gd            mesh helpers (lathe, prisms, materials)
-  finger.gd               one touch: role, screen/board position and velocity
-  finger_input.gd         touches → feet/push fingers, measured in board space each tick
-  foot_physics.gd         finger → press + grip forces (the core control model)
-  wheel_physics.gd        sideways grip and rolling resistance
-  push_physics.gd         ground swipes → push force
-  screen_math.gd          deterministic camera ray / projection math
-  chase_camera.gd         low smooth chase camera
-  haptics.gd              vibration on pop and landing
-  debug_overlay.gd        finger dots/arrows, board map, speed/height/angles, reset
-  pause_menu.gd           pause button + settings menu (sliders, resume, reset, defaults)
-  game_settings.gd        the player's settings: saved/loaded, applied on top of the tuning
-shaders/                  concrete (slab joints = motion cue), grass, grip tape, deck wood
-tests/test_ollie.gd       headless physics tests
+  main.gd               wires everything; tapping, survival ticks, repairs, death, saving
+  hash_noise.gd         deterministic integer-hash noise
+  world_gen.gd          biomes, terrain, caves, ores, ruins, pickups (pure, seeded)
+  world.gd              chunk streaming (worker threads), mining, mined/collected state
+  tiles.gd              tile types: colours, hardness, drops
+  tileset_builder.gd    tile atlas + collision built in code
+  player.gd             explorer movement, headlamp, drawing
+  touch_controls.gd     portrait multitouch buttons
+  survival.gd           oxygen, food, power, health
+  inventory.gd          resources and usable items
+  ship.gd               the crashed ship (base): range, repairs, drawing
+  day_night.gd          time of day, light level
+  story.gd              chapters and ordered lore
+  hud.gd                bars, info, items, messages, story/ship/pause panels
+  background.gd         sky, planet, moons, parallax mountains
+  pickup.gd             plants, wreckage, pods, monoliths
+  save_game.gd          save file (seed + changes only)
+tests/test_game.gd      headless tests
 ```
